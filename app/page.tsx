@@ -1,27 +1,10 @@
+import Navbar from "@/components/Navbar";
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Navbar */}
-      <nav className="bg-black border-b border-[#1a1a1a] h-16 flex items-center justify-center">
-        <div className="w-full max-w-7xl mx-auto px-10 flex items-center justify-between">
-          <div className="font-bold text-2xl tracking-widest">
-            <span className="text-[#ff751f]">EURO</span>
-            <span className="text-white">DRAFT</span>
-          </div>
-          <div className="flex gap-8">
-            <a href="#" className="text-[#ff751f] text-sm">Αγωνιστική</a>
-            <a href="#" className="text-gray-400 text-sm hover:text-white">Κατάταξη</a>
-            <a href="#" className="text-gray-400 text-sm hover:text-white">Κύπελλο</a>
-            <a href="#" className="text-gray-400 text-sm hover:text-white">Ιδιωτικά</a>
-            <a href="#" className="text-gray-400 text-sm hover:text-white">Chat</a>
-            <a href="#" className="text-gray-400 text-sm hover:text-white">Κανόνες</a>
-          </div>
-          <div className="flex gap-3">
-              <a href="/auth/login" className="text-sm px-4 py-2 rounded-md border border-[#333] text-white hover:bg-[#1a1a1a]">Σύνδεση</a>
-              <a href="/auth/register" className="text-sm px-4 py-2 rounded-md bg-[#ff751f] text-black font-medium hover:bg-[#e6671a]">Εγγραφή</a>
-            </div>
-        </div>
-      </nav>
+      
+      <Navbar />
 
       {/* Hero */}
       <div className="bg-black border-b border-[#1a1a1a]">
