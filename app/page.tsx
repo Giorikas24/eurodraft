@@ -1,9 +1,84 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { collection, getDocs, orderBy, query, limit } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import Navbar from "@/components/Navbar";
 
+interface Game {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  date: any;
+  homePoints: number;
+  awayPoints: number;
+  status: string;
+}
+
+interface Matchday {
+  id: string;
+  number: number;
+  deadline: any;
+  status: string;
+  games?: Game[];
+}
+
 export default function Home() {
+  const [matchday, setMatchday] = useState<Matchday | null>(null);
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCurrentMatchday();
+  }, []);
+
+  const fetchCurrentMatchday = async () => {
+    try {
+      const q = query(
+        collection(db, "matchdays"),
+        orderBy("number", "desc"),
+        limit(1)
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        const data = { id: doc.id, ...doc.data() } as Matchday;
+        if (data.status === "open") {
+          setMatchday(data);
+          fetchGames(doc.id);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchGames = async (matchdayId: string) => {
+    const q = query(
+      collection(db, "matchdays", matchdayId, "games"),
+      orderBy("date", "asc")
+    );
+    const snapshot = await getDocs(q);
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
+    setGames(data);
+  };
+
+  const formatDeadline = (deadline: any) => {
+    if (!deadline) return "";
+    const date = deadline.toDate ? deadline.toDate() : new Date(deadline);
+    return date.toLocaleString("el-GR", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const formatGameDate = (date: any) => {
+    if (!date) return "";
+    const d = date.toDate ? date.toDate() : new Date(date);
+    return d.toLocaleString("el-GR", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  };
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white">
-      
       <Navbar />
 
       {/* Hero */}
@@ -20,20 +95,20 @@ export default function Home() {
             Κάνε τις προβλέψεις σου για κάθε ματς της Euroleague, μάζεψε πόντους και ανέβα στην παγκόσμια κατάταξη.
           </p>
           <div className="flex gap-3 mb-14">
-            <button className="bg-[#ff751f] text-black font-medium px-8 py-3.5 rounded-lg text-sm hover:bg-[#e6671a]">Ξεκίνα δωρεάν</button>
+            <a href="/auth/register" className="bg-[#ff751f] text-black font-medium px-8 py-3.5 rounded-lg text-sm hover:bg-[#e6671a]">Ξεκίνα δωρεάν</a>
             <button className="border border-[#333] text-white px-8 py-3.5 rounded-lg text-sm hover:bg-[#111]">Πώς λειτουργεί</button>
           </div>
           <div className="flex gap-0">
             <div className="pr-10 mr-10 border-r border-[#1a1a1a]">
-              <div className="text-3xl font-medium text-white">347</div>
-              <div className="text-[10px] tracking-[2px] text-gray-600 mt-1">ΠΑΙΚΤΕΣ</div>
-            </div>
-            <div className="pr-10 mr-10 border-r border-[#1a1a1a]">
-              <div className="text-3xl font-medium text-white">#28</div>
+              <div className="text-3xl font-medium text-white">{matchday ? `#${matchday.number}` : "—"}</div>
               <div className="text-[10px] tracking-[2px] text-gray-600 mt-1">ΑΓΩΝΙΣΤΙΚΗ</div>
             </div>
+            <div className="pr-10 mr-10 border-r border-[#1a1a1a]">
+              <div className="text-3xl font-medium text-white">{games.length}</div>
+              <div className="text-[10px] tracking-[2px] text-gray-600 mt-1">ΜΑΤΣ</div>
+            </div>
             <div>
-              <div className="text-3xl font-medium text-white">2ω14λ</div>
+              <div className="text-3xl font-medium text-white">{matchday ? formatDeadline(matchday.deadline) : "—"}</div>
               <div className="text-[10px] tracking-[2px] text-gray-600 mt-1">DEADLINE</div>
             </div>
           </div>
@@ -41,131 +116,90 @@ export default function Home() {
       </div>
 
       {/* Ticker */}
-      <div className="bg-[#ff751f]">
-        <div className="w-full max-w-7xl mx-auto px-10 py-2.5 flex gap-8">
-          {[
-            { teams: "ΟΛΥ · VIL", info: "Παρ 20:00 · LIVE" },
-            { teams: "BAR · RMA", info: "Παρ 21:00" },
-            { teams: "PAN · CSK", info: "Σαβ 20:30" },
-            { teams: "EFE · MAD", info: "Σαβ 21:00" },
-            { teams: "ASV · ZAL", info: "Κυρ 19:00" },
-            { teams: "BAY · MCO", info: "Κυρ 20:00" },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-2 whitespace-nowrap">
-              <span className="text-xs font-medium text-black">{item.teams}</span>
-              <span className="text-xs text-black/60">{item.info}</span>
-              {i < 5 && <span className="text-black/30 ml-4">·</span>}
-            </div>
-          ))}
+      {games.length > 0 && (
+        <div className="bg-[#ff751f]">
+          <div className="w-full max-w-7xl mx-auto px-10 py-2.5 flex gap-8 overflow-hidden">
+            {games.map((g, i) => (
+              <div key={g.id} className="flex items-center gap-2 whitespace-nowrap">
+                <span className="text-xs font-medium text-black">{g.homeTeam.substring(0,3).toUpperCase()} · {g.awayTeam.substring(0,3).toUpperCase()}</span>
+                <span className="text-xs text-black/60">{formatGameDate(g.date)}</span>
+                {i < games.length - 1 && <span className="text-black/30 ml-4">·</span>}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Games section */}
       <div className="w-full max-w-7xl mx-auto px-10 py-8">
         <div className="flex justify-between items-center mb-5">
           <div>
-            <span className="text-base font-medium">Αγωνιστική #28</span>
-            <span className="text-xs text-gray-500 ml-3">Deadline: Παρασκευή 18:00 · Επέλεξες 3/8</span>
+            <span className="text-base font-medium">
+              {matchday ? `Αγωνιστική #${matchday.number}` : "Δεν υπάρχει ανοιχτή αγωνιστική"}
+            </span>
+            {matchday && (
+              <span className="text-xs text-gray-500 ml-3">
+                Deadline: {formatDeadline(matchday.deadline)}
+              </span>
+            )}
           </div>
-          <span className="text-xs text-[#ff751f] cursor-pointer">Δες όλα →</span>
         </div>
-        <div className="flex flex-col gap-2">
-          {[
-            { time: "Παρ 20:00", live: true, h: "Ολυμπιακός", a: "Βιλερμπάν", hpts: "+2", apts: "+8", hpct: "63%", apct: "37%", sel: "h" },
-            { time: "Παρ 21:00", live: false, h: "Μπαρτσελόνα", a: "Ρεάλ Μαδρίτης", hpts: "+5", apts: "+5", hpct: "51%", apct: "49%", sel: null },
-            { time: "Σαβ 20:30", live: false, h: "Παναθηναϊκός", a: "ΤΣΣΚΑ", hpts: "+4", apts: "+6", hpct: "58%", apct: "42%", sel: "h" },
-            { time: "Σαβ 21:00", live: false, h: "Εφές", a: "Μακάμπι", hpts: "+6", apts: "+4", hpct: "44%", apct: "56%", sel: null },
-          ].map((g, i) => (
-            <div key={i} className="bg-[#111] rounded-xl border border-[#1e1e1e] px-5 py-3.5 grid grid-cols-[110px_1fr_320px_70px] items-center gap-4 hover:border-[#2a2a2a]">
-              <div>
-                <div className="text-xs text-gray-400">{g.time}</div>
-                {g.live && <span className="text-[10px] bg-[#ff751f] text-black px-2 py-0.5 rounded font-medium mt-1 inline-block">LIVE</span>}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{g.h}</span>
-                <span className="text-xs text-gray-600">vs</span>
-                <span className="text-sm font-medium">{g.a}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className={`rounded-lg px-3 py-2 flex justify-between items-center cursor-pointer ${g.sel === "h" ? "bg-[rgba(255,117,31,0.08)] border border-[#ff751f]" : "bg-[#1a1a1a] border border-[#222]"}`}>
-                  <span className="text-xs font-medium">{g.h}</span>
-                  <span className="text-xs text-[#ff751f] font-medium">{g.hpts}</span>
+
+        {loading ? (
+          <div className="flex flex-col gap-2">
+            {[1,2,3].map(i => (
+              <div key={i} className="bg-[#111] rounded-xl border border-[#1e1e1e] h-16 animate-pulse"></div>
+            ))}
+          </div>
+        ) : games.length === 0 ? (
+          <div className="text-gray-500 text-sm py-8 text-center">
+            {matchday ? "Δεν υπάρχουν ματς ακόμα." : "Δεν υπάρχει ανοιχτή αγωνιστική αυτή τη στιγμή."}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {games.map((g) => (
+              <div key={g.id} className="bg-[#111] rounded-xl border border-[#1e1e1e] px-5 py-3.5 grid grid-cols-[110px_1fr_320px_70px] items-center gap-4 hover:border-[#2a2a2a]">
+                <div>
+                  <div className="text-xs text-gray-400">{formatGameDate(g.date)}</div>
+                  {g.status === "live" && <span className="text-[10px] bg-[#ff751f] text-black px-2 py-0.5 rounded font-medium mt-1 inline-block">LIVE</span>}
                 </div>
-                <div className={`rounded-lg px-3 py-2 flex justify-between items-center cursor-pointer ${g.sel === "a" ? "bg-[rgba(255,117,31,0.08)] border border-[#ff751f]" : "bg-[#1a1a1a] border border-[#222]"}`}>
-                  <span className="text-xs font-medium">{g.a}</span>
-                  <span className="text-xs text-[#ff751f] font-medium">{g.apts}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{g.homeTeam}</span>
+                  <span className="text-xs text-gray-600">vs</span>
+                  <span className="text-sm font-medium">{g.awayTeam}</span>
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg px-3 py-2 flex justify-between items-center cursor-pointer bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]">
+                    <span className="text-xs font-medium">{g.homeTeam}</span>
+                    <span className="text-xs text-[#ff751f] font-medium">+{g.homePoints}</span>
+                  </div>
+                  <div className="rounded-lg px-3 py-2 flex justify-between items-center cursor-pointer bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]">
+                    <span className="text-xs font-medium">{g.awayTeam}</span>
+                    <span className="text-xs text-[#ff751f] font-medium">+{g.awayPoints}</span>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600 text-right">{g.homePoints}/{g.awayPoints}</div>
               </div>
-              <div className="text-xs text-gray-600 text-right">{g.hpct} / {g.apct}</div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Bottom widgets */}
       <div className="w-full max-w-7xl mx-auto px-10 pb-10 grid grid-cols-3 gap-3">
-        {/* Leaderboard */}
         <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
           <div className="flex justify-between items-center mb-4">
             <span className="text-[10px] tracking-[2px] text-gray-600">ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ</span>
-            <span className="text-xs text-[#ff751f] cursor-pointer">Δες όλους →</span>
           </div>
-          {[
-            { n: 1, name: "Νίκος Κ.", badge: "PLAT", pts: 284, badgeClass: "bg-[#1a1540] text-[#AFA9EC]" },
-            { n: 2, name: "Γιώργης Π.", badge: "GOLD", pts: 271, badgeClass: "bg-[#3a2e00] text-[#FAC775]" },
-            { n: 3, name: "Αλέξης Μ.", badge: "GOLD", pts: 259, badgeClass: "bg-[#3a2e00] text-[#FAC775]" },
-            { n: 4, name: "Δημήτρης Λ.", badge: "SILVER", pts: 241, badgeClass: "bg-[#222] text-[#ccc]" },
-            { n: 5, name: "Κώστας Θ.", badge: "SILVER", pts: 238, badgeClass: "bg-[#222] text-[#ccc]" },
-          ].map((r) => (
-            <div key={r.n} className="flex items-center gap-2 py-2 border-b border-[#1a1a1a] last:border-0">
-              <span className={`text-xs w-5 text-center ${r.n <= 3 ? "text-[#ff751f]" : "text-gray-600"}`}>{r.n}</span>
-              <div className="w-7 h-7 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[9px] text-white font-medium">{r.name.split(" ").map((w: string) => w[0]).join("")}</div>
-              <span className="text-xs text-white flex-1">{r.name}</span>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${r.badgeClass}`}>{r.badge}</span>
-              <span className="text-xs font-medium text-white ml-1">{r.pts}</span>
-            </div>
-          ))}
+          <div className="text-gray-500 text-sm">Σύντομα...</div>
         </div>
-
-        {/* My position */}
         <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-[10px] tracking-[2px] text-gray-600">Η ΘΕΣΗ ΜΟΥ</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-[#2a1500] text-[#F0997B]">BRONZE</span>
-          </div>
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-4xl font-medium">#23</span>
-            <div>
-              <div className="text-sm font-medium">Username</div>
-              <div className="text-xs text-gray-500">183 πόντοι συνολικά</div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { val: "6/8", label: "Σωστές", orange: false },
-              { val: "+12", label: "Θέσεις", orange: true },
-              { val: "68%", label: "Επιτυχία", orange: false },
-              { val: "3/8", label: "Επιλογές", orange: true },
-            ].map((s, i) => (
-              <div key={i} className="bg-[#1a1a1a] rounded-lg p-2.5 text-center">
-                <div className={`text-lg font-medium ${s.orange ? "text-[#ff751f]" : "text-white"}`}>{s.val}</div>
-                <div className="text-[10px] text-gray-600 mt-0.5">{s.label}</div>
-              </div>
-            ))}
-          </div>
+          <div className="text-[10px] tracking-[2px] text-gray-600 mb-4">Η ΘΕΣΗ ΜΟΥ</div>
+          <div className="text-gray-500 text-sm">Συνδέσου για να δεις τη θέση σου.</div>
         </div>
-
-        {/* Challenge */}
         <div className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5">
           <div className="text-[10px] tracking-[2px] text-gray-600 mb-4">ΕΒΔΟΜΑΔΙΑΙΟ CHALLENGE</div>
-          <div className="bg-[rgba(255,117,31,0.06)] border border-[rgba(255,117,31,0.2)] rounded-lg p-3 mb-4">
-            <div className="text-sm font-medium text-[#ff751f] mb-1">+10 bonus πόντοι</div>
-            <div className="text-xs text-gray-400 leading-relaxed">Βρες 4 σωστά ειδικά παικτών αυτή την αγωνιστική</div>
-          </div>
-          <div className="text-xs text-gray-400 mb-2">Πρόοδος: 2/4 ειδικά</div>
-          <div className="h-1 bg-[#1a1a1a] rounded-full">
-            <div className="h-1 bg-[#ff751f] rounded-full w-1/2"></div>
-          </div>
+          <div className="text-gray-500 text-sm">Σύντομα...</div>
         </div>
       </div>
     </main>
