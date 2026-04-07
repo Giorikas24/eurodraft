@@ -23,7 +23,7 @@ export default function Navbar() {
         </a>
         <div className="flex gap-8">
           <a href="#" className="text-[#ff751f] text-sm">Αγωνιστική</a>
-          <a href="#" className="text-gray-400 text-sm hover:text-white">Κατάταξη</a>
+          <a href="/leaderboard" className="text-gray-400 text-sm hover:text-white">Κατάταξη</a>
           <a href="#" className="text-gray-400 text-sm hover:text-white">Κύπελλο</a>
           <a href="#" className="text-gray-400 text-sm hover:text-white">Ιδιωτικά</a>
           <a href="#" className="text-gray-400 text-sm hover:text-white">Chat</a>
