@@ -17,9 +17,9 @@ export default function Home() {
             <a href="#" className="text-gray-400 text-sm hover:text-white">Κανόνες</a>
           </div>
           <div className="flex gap-3">
-            <button className="text-sm px-4 py-2 rounded-md border border-[#333] text-white hover:bg-[#1a1a1a]">Σύνδεση</button>
-            <button className="text-sm px-4 py-2 rounded-md bg-[#ff751f] text-black font-medium hover:bg-[#e6671a]">Εγγραφή</button>
-          </div>
+              <a href="/auth/login" className="text-sm px-4 py-2 rounded-md border border-[#333] text-white hover:bg-[#1a1a1a]">Σύνδεση</a>
+              <a href="/auth/register" className="text-sm px-4 py-2 rounded-md bg-[#ff751f] text-black font-medium hover:bg-[#e6671a]">Εγγραφή</a>
+            </div>
         </div>
       </nav>
 
