@@ -136,7 +136,7 @@ export default function PrivatePage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                    placeholder="π.χ. Παρέα Σπύρου"
+                    placeholder=""
                     required
                   />
                 </div>
@@ -160,7 +160,7 @@ export default function PrivatePage() {
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value)}
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                    placeholder="π.χ. ABC123"
+                    placeholder=""
                     maxLength={6}
                     required
                   />
