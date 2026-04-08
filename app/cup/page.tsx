@@ -43,7 +43,14 @@ export default function CupPage() {
   const bronze = users.slice(Math.ceil(total * 0.75));
 
   const myRank = user ? users.findIndex(u => u.id === user.uid) + 1 : 0;
-  const myCategory = myRank > 0 ? getBadge(myRank, total) : null;
+const getMyCategory = () => {
+  if (!user || myRank === 0) return null;
+  if (platinum.find(p => p.id === user.uid)) return { label: "PLATINUM", class: "bg-[#1a1540] text-[#AFA9EC]" };
+  if (gold.find(p => p.id === user.uid)) return { label: "GOLD", class: "bg-[#3a2e00] text-[#FAC775]" };
+  if (silver.find(p => p.id === user.uid)) return { label: "SILVER", class: "bg-[#222] text-[#ccc]" };
+  return { label: "BRONZE", class: "bg-[#2a1500] text-[#F0997B]" };
+};
+const myCategory = getMyCategory();
 
   const CategorySection = ({ title, badgeClass, players, color }: { title: string, badgeClass: string, players: UserData[], color: string }) => (
     <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
