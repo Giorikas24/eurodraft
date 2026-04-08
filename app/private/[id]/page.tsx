@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import { useParams, useRouter } from "next/navigation";
+import { getBadge } from "@/lib/badges";
 
 interface League {
   id: string;
@@ -22,14 +23,6 @@ interface MemberStats {
   username: string;
   points: number;
 }
-
-const getBadge = (rank: number, total: number) => {
-  const pct = rank / total;
-  if (pct <= 0.1) return { label: "PLATINUM", class: "bg-[#1a1540] text-[#AFA9EC]" };
-  if (pct <= 0.3) return { label: "GOLD", class: "bg-[#3a2e00] text-[#FAC775]" };
-  if (pct <= 0.6) return { label: "SILVER", class: "bg-[#222] text-[#ccc]" };
-  return { label: "BRONZE", class: "bg-[#2a1500] text-[#F0997B]" };
-};
 
 export default function PrivateLeaguePage() {
   const { user, loading } = useAuth();
@@ -89,7 +82,7 @@ export default function PrivateLeaguePage() {
       <main className="min-h-screen bg-[#0a0a0a] text-white">
         <Navbar />
         <div className="flex items-center justify-center h-96">
-          <div className="text-gray-500">Φόρτωση...</div>
+          <div className="w-6 h-6 border-2 border-[#ff751f] border-t-transparent rounded-full animate-spin"></div>
         </div>
       </main>
     );

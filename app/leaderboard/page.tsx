@@ -5,6 +5,7 @@ import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
+import { getBadge } from "@/lib/badges";
 
 interface UserData {
   id: string;
@@ -12,14 +13,6 @@ interface UserData {
   email: string;
   points: number;
 }
-
-const getBadge = (rank: number, total: number) => {
-  const pct = rank / total;
-  if (pct <= 0.1) return { label: "PLATINUM", class: "bg-[#1a1540] text-[#AFA9EC]" };
-  if (pct <= 0.3) return { label: "GOLD", class: "bg-[#3a2e00] text-[#FAC775]" };
-  if (pct <= 0.6) return { label: "SILVER", class: "bg-[#222] text-[#ccc]" };
-  return { label: "BRONZE", class: "bg-[#2a1500] text-[#F0997B]" };
-};
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
@@ -66,7 +59,6 @@ export default function LeaderboardPage() {
           )}
         </div>
 
-        {/* Top 3 */}
         {!loading && users.length >= 3 && (
           <div className="grid grid-cols-3 gap-4 mb-8">
             {[users[1], users[0], users[2]].map((u, i) => {
@@ -89,7 +81,6 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        {/* Full list */}
         <div className="bg-[#111] rounded-xl border border-[#1e1e1e] overflow-hidden">
           <div className="grid grid-cols-[40px_1fr_80px_80px] gap-4 px-6 py-3 border-b border-[#1a1a1a]">
             <div className="text-[10px] tracking-[2px] text-gray-600">#</div>
