@@ -5,6 +5,7 @@ import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, up
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 export default function Register() {
   const router = useRouter();
@@ -62,21 +63,38 @@ export default function Register() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <div className="w-full max-w-md px-8 py-10 bg-[#111] rounded-2xl border border-[#1e1e1e]">
+    <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#ff751f] opacity-[0.03] blur-[120px] rounded-full"></div>
+      </div>
 
-        <div className="text-center mb-8">
-          <div className="font-bold text-3xl tracking-widest mb-2">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md px-8 py-10 bg-[#111] rounded-2xl border border-[#1e1e1e] relative"
+      >
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="text-center mb-8"
+        >
+          <a href="/" className="font-bold text-3xl tracking-widest inline-block mb-3">
             <span className="text-[#ff751f]">EURO</span>
             <span className="text-white">DRAFT</span>
-          </div>
-          <p className="text-gray-500 text-sm">Δημιούργησε τον λογαριασμό σου</p>
-        </div>
+          </a>
+          <p className="text-gray-500 text-sm">Δημιούργησε τον λογαριασμό σου δωρεάν</p>
+        </motion.div>
 
-        <button
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleGoogle}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 bg-white text-black font-medium py-3 rounded-lg text-sm mb-6 hover:bg-gray-100 disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-3 bg-white text-black font-medium py-3 rounded-lg text-sm mb-6 hover:bg-gray-100 disabled:opacity-50 transition-colors"
         >
           <svg width="18" height="18" viewBox="0 0 18 18">
             <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
@@ -85,7 +103,7 @@ export default function Register() {
             <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
           </svg>
           Εγγραφή με Google
-        </button>
+        </motion.button>
 
         <div className="flex items-center gap-3 mb-6">
           <div className="flex-1 h-px bg-[#222]"></div>
@@ -93,14 +111,20 @@ export default function Register() {
           <div className="flex-1 h-px bg-[#222]"></div>
         </div>
 
-        <form onSubmit={handleRegister} className="flex flex-col gap-4">
+        <motion.form
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          onSubmit={handleRegister}
+          className="flex flex-col gap-4"
+        >
           <div>
             <label className="text-xs text-gray-500 mb-1.5 block">Username</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f]"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f] transition-colors"
               placeholder="το username σου"
               required
             />
@@ -111,7 +135,7 @@ export default function Register() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f]"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f] transition-colors"
               placeholder="email@example.com"
               required
             />
@@ -122,28 +146,42 @@ export default function Register() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f]"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f] transition-colors"
               placeholder="τουλάχιστον 6 χαρακτήρες"
               required
             />
           </div>
 
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2"
+            >
+              {error}
+            </motion.p>
+          )}
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={loading}
-            className="w-full bg-[#ff751f] text-black font-medium py-3 rounded-lg text-sm hover:bg-[#e6671a] disabled:opacity-50 mt-2"
+            className="w-full bg-[#ff751f] text-black font-medium py-3 rounded-lg text-sm hover:bg-[#e6671a] disabled:opacity-50 mt-2 transition-colors flex items-center justify-center gap-2"
           >
-            {loading ? "Εγγραφή..." : "Εγγραφή"}
-          </button>
-        </form>
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                Εγγραφή...
+              </>
+            ) : "Εγγραφή"}
+          </motion.button>
+        </motion.form>
 
         <p className="text-center text-xs text-gray-600 mt-6">
           Έχεις ήδη λογαριασμό;{" "}
           <a href="/auth/login" className="text-[#ff751f] hover:underline">Σύνδεση</a>
         </p>
-      </div>
+      </motion.div>
     </main>
   );
 }
