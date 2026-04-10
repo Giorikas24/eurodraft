@@ -18,8 +18,20 @@ interface Game {
   awayOdds: number;
   homePoints: number;
   awayPoints: number;
+  handicapLine: number;
+  handicapHomeOdds: number;
+  handicapAwayOdds: number;
+  handicapHomePoints: number;
+  handicapAwayPoints: number;
+  ouLine: number;
+  overOdds: number;
+  underOdds: number;
+  overPoints: number;
+  underPoints: number;
   status: string;
   result: string | null;
+  handicapResult: string | null;
+  ouResult: string | null;
 }
 
 interface EditState {
@@ -28,6 +40,12 @@ interface EditState {
   date: string;
   homeOdds: string;
   awayOdds: string;
+  handicapLine: string;
+  handicapHomeOdds: string;
+  handicapAwayOdds: string;
+  ouLine: string;
+  overOdds: string;
+  underOdds: string;
 }
 
 export default function MatchdayDetailPage() {
@@ -43,6 +61,12 @@ export default function MatchdayDetailPage() {
   const [date, setDate] = useState("");
   const [homeOdds, setHomeOdds] = useState("");
   const [awayOdds, setAwayOdds] = useState("");
+  const [handicapLine, setHandicapLine] = useState("");
+  const [handicapHomeOdds, setHandicapHomeOdds] = useState("");
+  const [handicapAwayOdds, setHandicapAwayOdds] = useState("");
+  const [ouLine, setOuLine] = useState("");
+  const [overOdds, setOverOdds] = useState("");
+  const [underOdds, setUnderOdds] = useState("");
   const [saving, setSaving] = useState(false);
   const [grading, setGrading] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -82,12 +106,33 @@ export default function MatchdayDetailPage() {
     setSaving(true);
     try {
       const { homePoints, awayPoints } = calcPoints(parseFloat(homeOdds), parseFloat(awayOdds));
+      const hcp = calcPoints(parseFloat(handicapHomeOdds), parseFloat(handicapAwayOdds));
+      const ou = calcPoints(parseFloat(overOdds), parseFloat(underOdds));
+
       await addDoc(collection(db, "matchdays", matchdayId, "games"), {
         homeTeam, awayTeam, date: new Date(date),
         homeOdds: parseFloat(homeOdds), awayOdds: parseFloat(awayOdds),
-        homePoints, awayPoints, status: "pending", result: null, createdAt: new Date(),
+        homePoints, awayPoints,
+        handicapLine: parseFloat(handicapLine),
+        handicapHomeOdds: parseFloat(handicapHomeOdds),
+        handicapAwayOdds: parseFloat(handicapAwayOdds),
+        handicapHomePoints: hcp.homePoints,
+        handicapAwayPoints: hcp.awayPoints,
+        ouLine: parseFloat(ouLine),
+        overOdds: parseFloat(overOdds),
+        underOdds: parseFloat(underOdds),
+        overPoints: ou.homePoints,
+        underPoints: ou.awayPoints,
+        status: "pending",
+        result: null,
+        handicapResult: null,
+        ouResult: null,
+        createdAt: new Date(),
       });
-      setHomeTeam(""); setAwayTeam(""); setDate(""); setHomeOdds(""); setAwayOdds("");
+      setHomeTeam(""); setAwayTeam(""); setDate("");
+      setHomeOdds(""); setAwayOdds("");
+      setHandicapLine(""); setHandicapHomeOdds(""); setHandicapAwayOdds("");
+      setOuLine(""); setOverOdds(""); setUnderOdds("");
       setShowForm(false);
       fetchGames();
     } catch (err) { console.error(err); }
@@ -100,11 +145,10 @@ export default function MatchdayDetailPage() {
     const pad = (n: number) => String(n).padStart(2, "0");
     const localDate = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     setEditState({
-      homeTeam: g.homeTeam,
-      awayTeam: g.awayTeam,
-      date: localDate,
-      homeOdds: String(g.homeOdds),
-      awayOdds: String(g.awayOdds),
+      homeTeam: g.homeTeam, awayTeam: g.awayTeam, date: localDate,
+      homeOdds: String(g.homeOdds || ""), awayOdds: String(g.awayOdds || ""),
+      handicapLine: String(g.handicapLine || ""), handicapHomeOdds: String(g.handicapHomeOdds || ""), handicapAwayOdds: String(g.handicapAwayOdds || ""),
+      ouLine: String(g.ouLine || ""), overOdds: String(g.overOdds || ""), underOdds: String(g.underOdds || ""),
     });
   };
 
@@ -113,17 +157,21 @@ export default function MatchdayDetailPage() {
     setEditSaving(true);
     try {
       const { homePoints, awayPoints } = calcPoints(parseFloat(editState.homeOdds), parseFloat(editState.awayOdds));
+      const hcp = calcPoints(parseFloat(editState.handicapHomeOdds), parseFloat(editState.handicapAwayOdds));
+      const ou = calcPoints(parseFloat(editState.overOdds), parseFloat(editState.underOdds));
       await updateDoc(doc(db, "matchdays", matchdayId, "games", gameId), {
-        homeTeam: editState.homeTeam,
-        awayTeam: editState.awayTeam,
-        date: new Date(editState.date),
-        homeOdds: parseFloat(editState.homeOdds),
-        awayOdds: parseFloat(editState.awayOdds),
-        homePoints,
-        awayPoints,
+        homeTeam: editState.homeTeam, awayTeam: editState.awayTeam, date: new Date(editState.date),
+        homeOdds: parseFloat(editState.homeOdds), awayOdds: parseFloat(editState.awayOdds),
+        homePoints, awayPoints,
+        handicapLine: parseFloat(editState.handicapLine),
+        handicapHomeOdds: parseFloat(editState.handicapHomeOdds),
+        handicapAwayOdds: parseFloat(editState.handicapAwayOdds),
+        handicapHomePoints: hcp.homePoints, handicapAwayPoints: hcp.awayPoints,
+        ouLine: parseFloat(editState.ouLine),
+        overOdds: parseFloat(editState.overOdds), underOdds: parseFloat(editState.underOdds),
+        overPoints: ou.homePoints, underPoints: ou.awayPoints,
       });
-      setEditingId(null);
-      setEditState(null);
+      setEditingId(null); setEditState(null);
       fetchGames();
     } catch (err) { console.error(err); }
     finally { setEditSaving(false); }
@@ -137,19 +185,34 @@ export default function MatchdayDetailPage() {
     } catch (err) { console.error(err); }
   };
 
-  const handleSetResult = async (game: Game, result: "home" | "away") => {
+  const handleSetResult = async (game: Game, type: "result" | "handicapResult" | "ouResult", value: string) => {
     if (!confirm("Σίγουρα; Αυτό θα ενημερώσει τους πόντους όλων των παικτών.")) return;
-    setGrading(game.id);
+    setGrading(game.id + type);
     try {
-      await updateDoc(doc(db, "matchdays", matchdayId, "games", game.id), { result, status: "finished" });
+      const updateData: any = { [type]: value };
+      if (type === "result") updateData.status = "finished";
+      await updateDoc(doc(db, "matchdays", matchdayId, "games", game.id), updateData);
+
       const predictionsSnap = await getDocs(collection(db, "predictions"));
       const batch = writeBatch(db);
+
       for (const predDoc of predictionsSnap.docs) {
         const predData = predDoc.data();
         if (predData.matchdayId !== matchdayId) continue;
-        if (!predData.picks || !predData.picks[game.id]) continue;
-        const isCorrect = predData.picks[game.id] === result;
-        const pointsEarned = isCorrect ? (result === "home" ? game.homePoints : game.awayPoints) : -1;
+
+        const pickKey = type === "result" ? game.id : type === "handicapResult" ? game.id + "_hcp" : game.id + "_ou";
+        if (!predData.picks || !predData.picks[pickKey]) continue;
+
+        const userPick = predData.picks[pickKey];
+        const isCorrect = userPick === value;
+        let pointsEarned = -1;
+
+        if (isCorrect) {
+          if (type === "result") pointsEarned = value === "home" ? game.homePoints : game.awayPoints;
+          else if (type === "handicapResult") pointsEarned = value === "home" ? game.handicapHomePoints : game.handicapAwayPoints;
+          else pointsEarned = value === "over" ? game.overPoints : game.underPoints;
+        }
+
         const userRef = doc(db, "users", predData.userId);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -167,10 +230,6 @@ export default function MatchdayDetailPage() {
     const d = date.toDate ? date.toDate() : new Date(date);
     return d.toLocaleString("el-GR", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
   };
-
-  const editPoints = editState && editState.homeOdds && editState.awayOdds
-    ? calcPoints(parseFloat(editState.homeOdds), parseFloat(editState.awayOdds))
-    : null;
 
   const points = homeOdds && awayOdds ? calcPoints(parseFloat(homeOdds), parseFloat(awayOdds)) : null;
 
@@ -194,10 +253,8 @@ export default function MatchdayDetailPage() {
             <h1 className="text-2xl font-medium">Αγωνιστική #{matchday?.number}</h1>
             <p className="text-xs text-gray-500 mt-1">Deadline: {formatDate(matchday?.deadline)}</p>
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-[#ff751f] text-black font-medium px-5 py-2.5 rounded-lg text-sm hover:bg-[#e6671a]"
-          >
+          <button onClick={() => setShowForm(!showForm)}
+            className="bg-[#ff751f] text-black font-medium px-5 py-2.5 rounded-lg text-sm hover:bg-[#e6671a]">
             + Πρόσθεσε ματς
           </button>
         </div>
@@ -224,34 +281,87 @@ export default function MatchdayDetailPage() {
                   </select>
                 </div>
               </div>
+
               <div>
                 <label className="text-xs text-gray-500 mb-1.5 block">Ημερομηνία και ώρα</label>
                 <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)}
                   className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]" required />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-gray-500 mb-1.5 block">Απόδοση {homeTeam || "γηπεδούχου"}</label>
-                  <input type="number" step="0.01" value={homeOdds} onChange={(e) => setHomeOdds(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                    placeholder="π.χ. 1.40" required />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1.5 block">Απόδοση {awayTeam || "φιλοξενούμενου"}</label>
-                  <input type="number" step="0.01" value={awayOdds} onChange={(e) => setAwayOdds(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                    placeholder="π.χ. 3.20" required />
-                </div>
-              </div>
-              {points && (
-                <div className="bg-[#1a1a1a] rounded-lg px-4 py-3 flex justify-between items-center">
-                  <span className="text-xs text-gray-500">Πόντοι αν κερδίσει:</span>
-                  <div className="flex gap-4">
-                    <span className="text-sm text-white">{homeTeam || "Γηπεδούχος"}: <span className="text-[#ff751f]">+{points.homePoints}</span></span>
-                    <span className="text-sm text-white">{awayTeam || "Φιλοξενούμενος"}: <span className="text-[#ff751f]">+{points.awayPoints}</span></span>
+
+              {/* 1/2 */}
+              <div className="border border-[#2a2a2a] rounded-lg p-4">
+                <div className="text-xs text-[#ff751f] font-medium mb-3">1 / 2 — Νικητής</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση {homeTeam || "γηπεδούχου"}</label>
+                    <input type="number" step="0.01" value={homeOdds} onChange={(e) => setHomeOdds(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                      placeholder="π.χ. 1.40" required />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση {awayTeam || "φιλοξενούμενου"}</label>
+                    <input type="number" step="0.01" value={awayOdds} onChange={(e) => setAwayOdds(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                      placeholder="π.χ. 3.20" required />
                   </div>
                 </div>
-              )}
+                {points && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    Πόντοι: {homeTeam || "Γηπεδούχος"} <span className="text-[#ff751f]">+{points.homePoints}</span> · {awayTeam || "Φιλοξενούμενος"} <span className="text-[#ff751f]">+{points.awayPoints}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Handicap */}
+              <div className="border border-[#2a2a2a] rounded-lg p-4">
+                <div className="text-xs text-[#ff751f] font-medium mb-3">Handicap</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Line (π.χ. -5.5)</label>
+                    <input type="number" step="0.5" value={handicapLine} onChange={(e) => setHandicapLine(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                      placeholder="-5.5" required />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση {homeTeam || "γηπ."}</label>
+                    <input type="number" step="0.01" value={handicapHomeOdds} onChange={(e) => setHandicapHomeOdds(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                      placeholder="1.85" required />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση {awayTeam || "φιλ."}</label>
+                    <input type="number" step="0.01" value={handicapAwayOdds} onChange={(e) => setHandicapAwayOdds(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                      placeholder="1.85" required />
+                  </div>
+                </div>
+              </div>
+
+              {/* Over/Under */}
+              <div className="border border-[#2a2a2a] rounded-lg p-4">
+                <div className="text-xs text-[#ff751f] font-medium mb-3">Over / Under</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Line (π.χ. 160.5)</label>
+                    <input type="number" step="0.5" value={ouLine} onChange={(e) => setOuLine(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                      placeholder="160.5" required />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση Over</label>
+                    <input type="number" step="0.01" value={overOdds} onChange={(e) => setOverOdds(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                      placeholder="1.85" required />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση Under</label>
+                    <input type="number" step="0.01" value={underOdds} onChange={(e) => setUnderOdds(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                      placeholder="1.85" required />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex gap-3">
                 <button type="submit" disabled={saving}
                   className="bg-[#ff751f] text-black font-medium px-6 py-2.5 rounded-lg text-sm hover:bg-[#e6671a] disabled:opacity-50">
@@ -275,108 +385,83 @@ export default function MatchdayDetailPage() {
           )}
           {games.map((g) => (
             <div key={g.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-6 py-4">
-              {editingId === g.id && editState ? (
-                <div className="flex flex-col gap-4">
-                  <div className="text-sm font-medium text-[#ff751f] mb-1">Επεξεργασία ματς</div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Γηπεδούχος</label>
-                      <select value={editState.homeTeam} onChange={(e) => setEditState({...editState, homeTeam: e.target.value})}
-                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]">
-                        {EUROLEAGUE_TEAMS.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Φιλοξενούμενος</label>
-                      <select value={editState.awayTeam} onChange={(e) => setEditState({...editState, awayTeam: e.target.value})}
-                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]">
-                        {EUROLEAGUE_TEAMS.filter(t => t.name !== editState.homeTeam).map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                      </select>
-                    </div>
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <div className="font-medium text-white">{g.homeTeam} vs {g.awayTeam}</div>
+                  <div className="text-xs text-gray-500 mt-1">{formatDate(g.date)}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-1 rounded font-medium ${
+                    g.status === "pending" ? "bg-[#222] text-gray-400" :
+                    g.status === "live" ? "bg-[#ff751f] text-black" :
+                    "bg-green-900 text-green-400"
+                  }`}>
+                    {g.status === "pending" ? "Αναμονή" : g.status === "live" ? "LIVE" : "Τελικό"}
+                  </span>
+                  <button onClick={() => startEdit(g)}
+                    className="text-xs border border-[#333] text-gray-400 px-2.5 py-1 rounded-lg hover:border-[#ff751f] hover:text-[#ff751f] transition-colors">
+                    Επεξεργασία
+                  </button>
+                  <button onClick={() => handleDelete(g.id)}
+                    className="text-xs border border-[#333] text-gray-600 px-2.5 py-1 rounded-lg hover:border-red-500 hover:text-red-400 transition-colors">
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* 1/2 result */}
+              <div className="border-t border-[#1a1a1a] pt-3 mb-3">
+                <div className="text-xs text-gray-500 mb-2">
+                  1/2 {g.result ? "→ " + (g.result === "home" ? g.homeTeam : g.awayTeam) : "(αποτέλεσμα;)"}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => handleSetResult(g, "result", "home")} disabled={grading === g.id + "result"}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.result === "home" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                    {g.homeTeam}
+                  </button>
+                  <button onClick={() => handleSetResult(g, "result", "away")} disabled={grading === g.id + "result"}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.result === "away" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                    {g.awayTeam}
+                  </button>
+                </div>
+              </div>
+
+              {/* Handicap result */}
+              {g.handicapLine !== undefined && (
+                <div className="border-t border-[#1a1a1a] pt-3 mb-3">
+                  <div className="text-xs text-gray-500 mb-2">
+                    Handicap {g.handicapLine > 0 ? "+" : ""}{g.handicapLine} {g.handicapResult ? "→ " + (g.handicapResult === "home" ? g.homeTeam : g.awayTeam) : "(αποτέλεσμα;)"}
                   </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Ημερομηνία</label>
-                    <input type="datetime-local" value={editState.date} onChange={(e) => setEditState({...editState, date: e.target.value})}
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Απόδοση {editState.homeTeam}</label>
-                      <input type="number" step="0.01" value={editState.homeOdds} onChange={(e) => setEditState({...editState, homeOdds: e.target.value})}
-                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Απόδοση {editState.awayTeam}</label>
-                      <input type="number" step="0.01" value={editState.awayOdds} onChange={(e) => setEditState({...editState, awayOdds: e.target.value})}
-                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" />
-                    </div>
-                  </div>
-                  {editPoints && (
-                    <div className="bg-[#1a1a1a] rounded-lg px-3 py-2 flex justify-between items-center">
-                      <span className="text-xs text-gray-500">Νέοι πόντοι:</span>
-                      <div className="flex gap-4">
-                        <span className="text-sm text-white">{editState.homeTeam}: <span className="text-[#ff751f]">+{editPoints.homePoints}</span></span>
-                        <span className="text-sm text-white">{editState.awayTeam}: <span className="text-[#ff751f]">+{editPoints.awayPoints}</span></span>
-                      </div>
-                    </div>
-                  )}
                   <div className="flex gap-2">
-                    <button onClick={() => handleEditSave(g.id)} disabled={editSaving}
-                      className="bg-[#ff751f] text-black font-medium px-5 py-2 rounded-lg text-sm hover:bg-[#e6671a] disabled:opacity-50">
-                      {editSaving ? "Αποθήκευση..." : "Αποθήκευσε"}
+                    <button onClick={() => handleSetResult(g, "handicapResult", "home")} disabled={grading === g.id + "handicapResult"}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.handicapResult === "home" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      {g.homeTeam} {g.handicapLine > 0 ? "+" : ""}{g.handicapLine}
                     </button>
-                    <button onClick={() => { setEditingId(null); setEditState(null); }}
-                      className="border border-[#333] text-gray-400 px-4 py-2 rounded-lg text-sm hover:bg-[#1a1a1a]">
-                      Ακύρωση
+                    <button onClick={() => handleSetResult(g, "handicapResult", "away")} disabled={grading === g.id + "handicapResult"}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.handicapResult === "away" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      {g.awayTeam} {g.handicapLine > 0 ? "-" : "+"}{Math.abs(g.handicapLine)}
                     </button>
                   </div>
                 </div>
-              ) : (
-                <>
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="font-medium text-white">{g.homeTeam} vs {g.awayTeam}</div>
-                      <div className="text-xs text-gray-500 mt-1">{formatDate(g.date)} · +{g.homePoints} / +{g.awayPoints} πόντοι</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-1 rounded font-medium ${
-                        g.status === "pending" ? "bg-[#222] text-gray-400" :
-                        g.status === "live" ? "bg-[#ff751f] text-black" :
-                        "bg-green-900 text-green-400"
-                      }`}>
-                        {g.status === "pending" ? "Αναμονή" : g.status === "live" ? "LIVE" : "Τελικό"}
-                      </span>
-                      <button onClick={() => startEdit(g)}
-                        className="text-xs border border-[#333] text-gray-400 px-2.5 py-1 rounded-lg hover:border-[#ff751f] hover:text-[#ff751f] transition-colors">
-                        Επεξεργασία
-                      </button>
-                      <button onClick={() => handleDelete(g.id)}
-                        className="text-xs border border-[#333] text-gray-600 px-2.5 py-1 rounded-lg hover:border-red-500 hover:text-red-400 transition-colors">
-                        ✕
-                      </button>
-                    </div>
+              )}
+
+              {/* O/U result */}
+              {g.ouLine !== undefined && (
+                <div className="border-t border-[#1a1a1a] pt-3">
+                  <div className="text-xs text-gray-500 mb-2">
+                    Over/Under {g.ouLine} {g.ouResult ? "→ " + (g.ouResult === "over" ? "Over" : "Under") : "(αποτέλεσμα;)"}
                   </div>
-                  <div className="border-t border-[#1a1a1a] pt-3">
-                    <div className="text-xs text-gray-500 mb-2">
-                      {g.status === "finished" ? "Νικητής: " + (g.result === "home" ? g.homeTeam : g.awayTeam) : "Βάλε αποτέλεσμα:"}
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleSetResult(g, "home")} disabled={grading === g.id}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
-                          g.result === "home" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"
-                        }`}>
-                        {g.homeTeam}
-                      </button>
-                      <button onClick={() => handleSetResult(g, "away")} disabled={grading === g.id}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
-                          g.result === "away" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"
-                        }`}>
-                        {g.awayTeam}
-                      </button>
-                      {grading === g.id && <span className="text-xs text-gray-500 self-center ml-2">Βαθμολόγηση...</span>}
-                    </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleSetResult(g, "ouResult", "over")} disabled={grading === g.id + "ouResult"}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.ouResult === "over" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      Over {g.ouLine}
+                    </button>
+                    <button onClick={() => handleSetResult(g, "ouResult", "under")} disabled={grading === g.id + "ouResult"}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.ouResult === "under" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      Under {g.ouLine}
+                    </button>
                   </div>
-                </>
+                </div>
               )}
             </div>
           ))}

@@ -16,6 +16,12 @@ interface Game {
   date: any;
   homePoints: number;
   awayPoints: number;
+  handicapLine: number;
+  handicapHomePoints: number;
+  handicapAwayPoints: number;
+  ouLine: number;
+  overPoints: number;
+  underPoints: number;
   status: string;
 }
 
@@ -178,6 +184,7 @@ export default function Home() {
         if (data.matchdayId !== matchdayId) continue;
         const picks = data.picks || {};
         for (const [gameId, pick] of Object.entries(picks)) {
+          if (gameId.includes("_hcp") || gameId.includes("_ou")) continue;
           if (!counts[gameId]) counts[gameId] = { home: 0, away: 0 };
           if (pick === "home") counts[gameId].home++;
           else if (pick === "away") counts[gameId].away++;
@@ -219,8 +226,9 @@ export default function Home() {
     return d.toLocaleString("el-GR", { weekday: "short", hour: "2-digit", minute: "2-digit" });
   };
 
+  const totalPicks = games.length * 3;
   const pickedCount = Object.keys(predictions).length;
-  const progressPct = games.length > 0 ? (pickedCount / games.length) * 100 : 0;
+  const progressPct = totalPicks > 0 ? (pickedCount / totalPicks) * 100 : 0;
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden">
@@ -295,7 +303,7 @@ export default function Home() {
         <div className="w-full max-w-7xl mx-auto px-5 md:px-10 pt-5">
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs text-gray-500">Προβλέψεις αγωνιστικής</span>
-            <span className="text-xs text-[#ff751f] font-medium">{pickedCount}/{games.length}</span>
+            <span className="text-xs text-[#ff751f] font-medium">{pickedCount}/{totalPicks}</span>
           </div>
           <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
             <motion.div className="h-1 bg-[#ff751f] rounded-full"
@@ -319,7 +327,7 @@ export default function Home() {
 
         {loading ? (
           <div className="flex flex-col gap-2">
-            {[1,2,3].map(i => <div key={i} className="bg-[#111] rounded-xl border border-[#1e1e1e] h-20 animate-pulse"></div>)}
+            {[1,2,3].map(i => <div key={i} className="bg-[#111] rounded-xl border border-[#1e1e1e] h-32 animate-pulse"></div>)}
           </div>
         ) : games.length === 0 ? (
           <div className="text-gray-500 text-sm py-16 text-center">
@@ -335,6 +343,7 @@ export default function Home() {
                   transition={{ duration: 0.4, delay: index * 0.08 }}
                   className="bg-[#111] rounded-xl border border-[#1e1e1e] p-4 hover:border-[#2a2a2a] transition-colors"
                 >
+                  {/* Header */}
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400">{formatGameDate(g.date)}</span>
@@ -345,56 +354,128 @@ export default function Home() {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-gray-600">
-                      {saving === g.id ? (
+                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                      {saving === g.id || saving === g.id + "_hcp" || saving === g.id + "_ou" ? (
                         <div className="w-4 h-4 border-2 border-[#ff751f] border-t-transparent rounded-full animate-spin"></div>
-                      ) : predictions[g.id] ? (
-                        <span className="text-[#ff751f] text-base">✓</span>
-                      ) : null}
+                      ) : (
+                        <>
+                          {predictions[g.id] && <span className="text-[#ff751f]">1/2✓</span>}
+                          {predictions[g.id + "_hcp"] && <span className="text-[#ff751f]">HCP✓</span>}
+                          {predictions[g.id + "_ou"] && <span className="text-[#ff751f]">O/U✓</span>}
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  <div className="text-sm font-medium text-center mb-3">
+                  <div className="text-sm font-medium text-center mb-4">
                     {g.homeTeam} <span className="text-gray-600 text-xs mx-1">vs</span> {g.awayTeam}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <motion.button whileTap={{ scale: 0.97 }}
-                      onClick={() => handlePick(g.id, "home")} disabled={saving === g.id}
-                      className={`rounded-lg px-3 py-3 flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                        predictions[g.id] === "home"
-                          ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f] shadow-[0_0_12px_rgba(255,117,31,0.1)]"
-                          : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
-                      }`}
-                    >
-                      <span className="text-xs font-medium text-center leading-tight">{g.homeTeam}</span>
-                      <span className="text-xs text-[#ff751f] font-medium">+{g.homePoints} πτς</span>
-                    </motion.button>
-                    <motion.button whileTap={{ scale: 0.97 }}
-                      onClick={() => handlePick(g.id, "away")} disabled={saving === g.id}
-                      className={`rounded-lg px-3 py-3 flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                        predictions[g.id] === "away"
-                          ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f] shadow-[0_0_12px_rgba(255,117,31,0.1)]"
-                          : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
-                      }`}
-                    >
-                      <span className="text-xs font-medium text-center leading-tight">{g.awayTeam}</span>
-                      <span className="text-xs text-[#ff751f] font-medium">+{g.awayPoints} πτς</span>
-                    </motion.button>
+                  {/* 1/2 */}
+                  <div className="mb-3">
+                    <div className="text-[10px] text-gray-600 mb-1.5 flex items-center gap-1">
+                      <span className="bg-[#1a1a1a] px-1.5 py-0.5 rounded text-gray-500">1/2</span>
+                      <span>Νικητής</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <motion.button whileTap={{ scale: 0.97 }}
+                        onClick={() => handlePick(g.id, "home")} disabled={saving === g.id}
+                        className={`rounded-lg px-3 py-2.5 flex flex-col items-center gap-0.5 cursor-pointer transition-all ${
+                          predictions[g.id] === "home"
+                            ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f] shadow-[0_0_12px_rgba(255,117,31,0.1)]"
+                            : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
+                        }`}>
+                        <span className="text-xs font-medium text-center leading-tight">{g.homeTeam}</span>
+                        <span className="text-xs text-[#ff751f] font-medium">+{g.homePoints} πτς</span>
+                      </motion.button>
+                      <motion.button whileTap={{ scale: 0.97 }}
+                        onClick={() => handlePick(g.id, "away")} disabled={saving === g.id}
+                        className={`rounded-lg px-3 py-2.5 flex flex-col items-center gap-0.5 cursor-pointer transition-all ${
+                          predictions[g.id] === "away"
+                            ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f] shadow-[0_0_12px_rgba(255,117,31,0.1)]"
+                            : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
+                        }`}>
+                        <span className="text-xs font-medium text-center leading-tight">{g.awayTeam}</span>
+                        <span className="text-xs text-[#ff751f] font-medium">+{g.awayPoints} πτς</span>
+                      </motion.button>
+                    </div>
+
+                    {stats && stats.total > 0 && (
+                      <div className="mt-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] text-gray-600">{stats.homePct}%</span>
+                          <span className="text-[10px] text-gray-600">{stats.total} επιλογές</span>
+                          <span className="text-[10px] text-gray-600">{stats.awayPct}%</span>
+                        </div>
+                        <div className="h-0.5 rounded-full overflow-hidden bg-[#2a2a2a] flex">
+                          <motion.div className="h-0.5 bg-[#ff751f]"
+                            initial={{ width: 0 }} animate={{ width: stats.homePct + "%" }} transition={{ duration: 0.5 }} />
+                          <div className="h-0.5 bg-[#333] flex-1"></div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {stats && stats.total > 0 && (
-                    <div className="mt-1">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] text-gray-600">{stats.homePct}%</span>
-                        <span className="text-[10px] text-gray-600">{stats.total} επιλογές</span>
-                        <span className="text-[10px] text-gray-600">{stats.awayPct}%</span>
+                  {/* Handicap */}
+                  {g.handicapLine !== undefined && (
+                    <div className="mb-3 border-t border-[#1a1a1a] pt-3">
+                      <div className="text-[10px] text-gray-600 mb-1.5 flex items-center gap-1">
+                        <span className="bg-[#1a1a1a] px-1.5 py-0.5 rounded text-gray-500">HCP</span>
+                        <span>Handicap {g.handicapLine > 0 ? "+" : ""}{g.handicapLine}</span>
                       </div>
-                      <div className="h-1 rounded-full overflow-hidden bg-[#2a2a2a] flex">
-                        <motion.div className="h-1 bg-[#ff751f] rounded-l-full"
-                          initial={{ width: 0 }} animate={{ width: stats.homePct + "%" }} transition={{ duration: 0.5 }} />
-                        <motion.div className="h-1 bg-[#333] rounded-r-full flex-1"
-                          initial={{ width: 0 }} animate={{ width: stats.awayPct + "%" }} transition={{ duration: 0.5 }} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <motion.button whileTap={{ scale: 0.97 }}
+                          onClick={() => handlePick(g.id + "_hcp", "home")} disabled={saving === g.id + "_hcp"}
+                          className={`rounded-lg px-3 py-2.5 flex flex-col items-center gap-0.5 cursor-pointer transition-all ${
+                            predictions[g.id + "_hcp"] === "home"
+                              ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f]"
+                              : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
+                          }`}>
+                          <span className="text-xs font-medium">{g.homeTeam} {g.handicapLine > 0 ? "+" : ""}{g.handicapLine}</span>
+                          <span className="text-xs text-[#ff751f] font-medium">+{g.handicapHomePoints} πτς</span>
+                        </motion.button>
+                        <motion.button whileTap={{ scale: 0.97 }}
+                          onClick={() => handlePick(g.id + "_hcp", "away")} disabled={saving === g.id + "_hcp"}
+                          className={`rounded-lg px-3 py-2.5 flex flex-col items-center gap-0.5 cursor-pointer transition-all ${
+                            predictions[g.id + "_hcp"] === "away"
+                              ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f]"
+                              : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
+                          }`}>
+                          <span className="text-xs font-medium">{g.awayTeam} {g.handicapLine > 0 ? "-" : "+"}{Math.abs(g.handicapLine)}</span>
+                          <span className="text-xs text-[#ff751f] font-medium">+{g.handicapAwayPoints} πτς</span>
+                        </motion.button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Over/Under */}
+                  {g.ouLine !== undefined && (
+                    <div className="border-t border-[#1a1a1a] pt-3">
+                      <div className="text-[10px] text-gray-600 mb-1.5 flex items-center gap-1">
+                        <span className="bg-[#1a1a1a] px-1.5 py-0.5 rounded text-gray-500">O/U</span>
+                        <span>Over/Under {g.ouLine}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <motion.button whileTap={{ scale: 0.97 }}
+                          onClick={() => handlePick(g.id + "_ou", "over")} disabled={saving === g.id + "_ou"}
+                          className={`rounded-lg px-3 py-2.5 flex flex-col items-center gap-0.5 cursor-pointer transition-all ${
+                            predictions[g.id + "_ou"] === "over"
+                              ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f]"
+                              : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
+                          }`}>
+                          <span className="text-xs font-medium">Over {g.ouLine}</span>
+                          <span className="text-xs text-[#ff751f] font-medium">+{g.overPoints} πτς</span>
+                        </motion.button>
+                        <motion.button whileTap={{ scale: 0.97 }}
+                          onClick={() => handlePick(g.id + "_ou", "under")} disabled={saving === g.id + "_ou"}
+                          className={`rounded-lg px-3 py-2.5 flex flex-col items-center gap-0.5 cursor-pointer transition-all ${
+                            predictions[g.id + "_ou"] === "under"
+                              ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f]"
+                              : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
+                          }`}>
+                          <span className="text-xs font-medium">Under {g.ouLine}</span>
+                          <span className="text-xs text-[#ff751f] font-medium">+{g.underPoints} πτς</span>
+                        </motion.button>
                       </div>
                     </div>
                   )}
@@ -407,8 +488,6 @@ export default function Home() {
 
       {/* Bottom widgets */}
       <div className="w-full max-w-7xl mx-auto px-5 md:px-10 pb-10 grid grid-cols-1 md:grid-cols-3 gap-3">
-
-        {/* Leaderboard widget */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
           className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5 hover:border-[#2a2a2a] transition-colors">
           <div className="flex justify-between items-center mb-4">
@@ -420,7 +499,6 @@ export default function Home() {
           ) : (
             <div className="flex flex-col gap-2">
               {topUsers.map((u, i) => {
-                const badge = getBadge(i + 1, totalUsers);
                 const isMe = user?.uid === u.id;
                 return (
                   <div key={u.id} className={`flex items-center gap-2 ${isMe ? "bg-[rgba(255,117,31,0.05)] rounded-lg px-2 py-1 -mx-2" : ""}`}>
@@ -451,7 +529,6 @@ export default function Home() {
           )}
         </motion.div>
 
-        {/* My position widget */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
           className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5 hover:border-[#2a2a2a] transition-colors">
           <div className="text-[10px] tracking-[2px] text-gray-600 mb-4">Η ΘΕΣΗ ΜΟΥ</div>
@@ -461,7 +538,7 @@ export default function Home() {
                 <div className="text-sm text-white font-medium">{user.displayName}</div>
                 {myRank > 0 && <div className="text-lg font-medium text-[#ff751f]">#{myRank}</div>}
               </div>
-              <div className="text-xs text-gray-500 mb-3">{pickedCount}/{games.length} προβλέψεις αυτή την αγωνιστική</div>
+              <div className="text-xs text-gray-500 mb-3">{pickedCount}/{totalPicks} προβλέψεις αυτή την αγωνιστική</div>
               <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
                 <motion.div className="h-1 bg-[#ff751f] rounded-full"
                   initial={{ width: 0 }} animate={{ width: progressPct + "%" }} transition={{ duration: 0.5 }} />
@@ -475,7 +552,6 @@ export default function Home() {
           )}
         </motion.div>
 
-        {/* Challenge widget */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}
           className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5 hover:border-[#2a2a2a] transition-colors">
           <div className="text-[10px] tracking-[2px] text-gray-600 mb-4">ΕΒΔΟΜΑΔΙΑΙΟ CHALLENGE</div>
