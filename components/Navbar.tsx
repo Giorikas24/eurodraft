@@ -30,6 +30,7 @@ export default function Navbar() {
     { href: "/private", label: "Ιδιωτικά" },
     { href: "/chat", label: "Chat" },
     { href: "/rules", label: "Κανόνες" },
+    { href: "/profile", label: "Προφίλ" },
   ];
 
   const isActive = (href: string) => href === "/" ? pathname === "/" : pathname.startsWith(href);
