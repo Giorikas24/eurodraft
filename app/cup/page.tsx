@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import { getBadge } from "@/lib/badges";
+import { motion } from "framer-motion";
 
 interface UserData {
   id: string;
@@ -19,21 +20,15 @@ export default function CupPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
 
   const fetchUsers = async () => {
     try {
       const q = query(collection(db, "users"), orderBy("points", "desc"));
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserData));
-      setUsers(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+      setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserData)));
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   const total = users.length;
@@ -43,38 +38,38 @@ export default function CupPage() {
   const bronze = users.slice(Math.ceil(total * 0.75));
 
   const myRank = user ? users.findIndex(u => u.id === user.uid) + 1 : 0;
-const getMyCategory = () => {
-  if (!user || myRank === 0) return null;
-  if (platinum.find(p => p.id === user.uid)) return { label: "PLATINUM", class: "bg-[#1a1540] text-[#AFA9EC]" };
-  if (gold.find(p => p.id === user.uid)) return { label: "GOLD", class: "bg-[#3a2e00] text-[#FAC775]" };
-  if (silver.find(p => p.id === user.uid)) return { label: "SILVER", class: "bg-[#222] text-[#ccc]" };
-  return { label: "BRONZE", class: "bg-[#2a1500] text-[#F0997B]" };
-};
-const myCategory = getMyCategory();
+  const getMyCategory = () => {
+    if (!user || myRank === 0) return null;
+    if (platinum.find(p => p.id === user.uid)) return { label: "PLATINUM", class: "bg-[#1a1540] text-[#AFA9EC]" };
+    if (gold.find(p => p.id === user.uid)) return { label: "GOLD", class: "bg-[#3a2e00] text-[#FAC775]" };
+    if (silver.find(p => p.id === user.uid)) return { label: "SILVER", class: "bg-[#222] text-[#ccc]" };
+    return { label: "BRONZE", class: "bg-[#2a1500] text-[#F0997B]" };
+  };
+  const myCategory = getMyCategory();
 
   const CategorySection = ({ title, badgeClass, players, color }: { title: string, badgeClass: string, players: UserData[], color: string }) => (
     <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-[#1a1a1a] flex justify-between items-center">
+      <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#1a1a1a] flex justify-between items-center">
         <span className={`text-xs px-3 py-1 rounded font-medium ${badgeClass}`}>{title}</span>
         <span className="text-xs text-gray-500">{players.length} παίκτες</span>
       </div>
       <div className="divide-y divide-[#1a1a1a]">
         {players.length === 0 ? (
-          <div className="px-6 py-4 text-gray-500 text-sm">Κανένας παίκτης ακόμα.</div>
+          <div className="px-4 md:px-6 py-4 text-gray-500 text-sm">Κανένας παίκτης ακόμα.</div>
         ) : (
           players.map((p, i) => {
             const isMe = user?.uid === p.id;
             return (
-              <div key={p.id} className={`px-6 py-3 flex items-center gap-3 ${isMe ? "bg-[rgba(255,117,31,0.05)]" : ""}`}>
-                <span className="text-xs text-gray-600 w-6">{i + 1}</span>
+              <div key={p.id} className={`px-4 md:px-6 py-3 flex items-center gap-2 md:gap-3 ${isMe ? "bg-[rgba(255,117,31,0.05)]" : ""}`}>
+                <span className="text-xs text-gray-600 w-5">{i + 1}</span>
                 <div className="w-7 h-7 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-xs font-medium text-white flex-shrink-0">
                   {p.username?.[0]?.toUpperCase() || "?"}
                 </div>
-                <span className="text-sm text-white flex-1">
+                <span className="text-sm text-white flex-1 truncate">
                   {p.username || p.email}
-                  {isMe && <span className="text-xs text-[#ff751f] ml-2">(εσύ)</span>}
+                  {isMe && <span className="text-xs text-[#ff751f] ml-1">(εσύ)</span>}
                 </span>
-                <span className="text-sm font-medium" style={{ color }}>{p.points} πτς</span>
+                <span className="text-sm font-medium flex-shrink-0" style={{ color }}>{p.points} πτς</span>
               </div>
             );
           })
@@ -87,30 +82,38 @@ const myCategory = getMyCategory();
     <main className="min-h-screen bg-[#0a0a0a] text-white">
       <Navbar />
 
-      <div className="w-full max-w-4xl mx-auto px-10 py-12">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#ff751f]"></div>
-          <span className="text-[#ff751f] text-xs tracking-[3px]">EURODRAFT</span>
-        </div>
-        <h1 className="text-3xl font-medium mb-2">Κύπελλο</h1>
-        <p className="text-gray-500 text-sm mb-8">Οι παίκτες χωρίζονται σε 4 κατηγορίες. Μετά τις πρώτες 8 αγωνιστικές ξεκινά το knock-out τουρνουά.</p>
+      <div className="w-full max-w-4xl mx-auto px-5 md:px-10 py-8 md:py-12">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#ff751f] animate-pulse"></div>
+            <span className="text-[#ff751f] text-xs tracking-[3px]">EURODRAFT</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-medium mb-2">Κύπελλο</h1>
+          <p className="text-gray-500 text-sm mb-6 md:mb-8">Οι παίκτες χωρίζονται σε 4 κατηγορίες. Μετά τις πρώτες 8 αγωνιστικές ξεκινά το knock-out τουρνουά.</p>
+        </motion.div>
 
         {myCategory && (
-          <div className="bg-[rgba(255,117,31,0.08)] border border-[rgba(255,117,31,0.2)] rounded-xl px-6 py-4 mb-8 flex justify-between items-center">
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, delay: 0.1 }}
+            className="bg-[rgba(255,117,31,0.08)] border border-[rgba(255,117,31,0.2)] rounded-xl px-4 md:px-6 py-4 mb-6 md:mb-8 flex justify-between items-center">
             <span className="text-sm text-gray-400">Η κατηγορία μου</span>
             <span className={`text-xs px-3 py-1 rounded font-medium ${myCategory.class}`}>{myCategory.label}</span>
-          </div>
+          </motion.div>
         )}
 
         {loading ? (
-          <div className="text-gray-500 text-sm">Φόρτωση...</div>
+          <div className="flex flex-col gap-3">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="bg-[#111] border border-[#1e1e1e] rounded-xl h-20 animate-pulse"></div>
+            ))}
+          </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+            className="flex flex-col gap-3 md:gap-4">
             <CategorySection title="PLATINUM" badgeClass="bg-[#1a1540] text-[#AFA9EC]" players={platinum} color="#AFA9EC" />
             <CategorySection title="GOLD" badgeClass="bg-[#3a2e00] text-[#FAC775]" players={gold} color="#FAC775" />
             <CategorySection title="SILVER" badgeClass="bg-[#222] text-[#ccc]" players={silver} color="#cccccc" />
             <CategorySection title="BRONZE" badgeClass="bg-[#2a1500] text-[#F0997B]" players={bronze} color="#F0997B" />
-          </div>
+          </motion.div>
         )}
       </div>
     </main>
