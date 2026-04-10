@@ -25,6 +25,12 @@ interface Matchday {
   status: string;
 }
 
+interface GameStats {
+  homePct: number;
+  awayPct: number;
+  total: number;
+}
+
 function CountdownTimer({ deadline }: { deadline: any }) {
   const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [expired, setExpired] = useState(false);
@@ -89,6 +95,7 @@ export default function Home() {
   const [matchday, setMatchday] = useState<Matchday | null>(null);
   const [games, setGames] = useState<Game[]>([]);
   const [predictions, setPredictions] = useState<Record<string, string>>({});
+  const [gameStats, setGameStats] = useState<Record<string, GameStats>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -101,6 +108,10 @@ export default function Home() {
   useEffect(() => {
     if (user && matchday) fetchUserPredictions(matchday.id);
   }, [user, matchday]);
+
+  useEffect(() => {
+    if (matchday && games.length > 0) fetchGameStats(matchday.id);
+  }, [matchday, games]);
 
   const fetchTotalUsers = async () => {
     const snapshot = await getDocs(collection(db, "users"));
@@ -132,6 +143,38 @@ export default function Home() {
     if (docSnap.exists()) setPredictions(docSnap.data().picks || {});
   };
 
+  const fetchGameStats = async (matchdayId: string) => {
+    try {
+      const predictionsSnap = await getDocs(
+        query(collection(db, "predictions"))
+      );
+
+      const counts: Record<string, { home: number; away: number }> = {};
+
+      for (const predDoc of predictionsSnap.docs) {
+        const data = predDoc.data();
+        if (data.matchdayId !== matchdayId) continue;
+        const picks = data.picks || {};
+        for (const [gameId, pick] of Object.entries(picks)) {
+          if (!counts[gameId]) counts[gameId] = { home: 0, away: 0 };
+          if (pick === "home") counts[gameId].home++;
+          else if (pick === "away") counts[gameId].away++;
+        }
+      }
+
+      const stats: Record<string, GameStats> = {};
+      for (const [gameId, { home, away }] of Object.entries(counts)) {
+        const total = home + away;
+        stats[gameId] = {
+          homePct: total > 0 ? Math.round((home / total) * 100) : 50,
+          awayPct: total > 0 ? Math.round((away / total) * 100) : 50,
+          total,
+        };
+      }
+      setGameStats(stats);
+    } catch (err) { console.error(err); }
+  };
+
   const handlePick = async (gameId: string, pick: string) => {
     if (!user) { router.push("/auth/login"); return; }
     if (!matchday) return;
@@ -144,6 +187,7 @@ export default function Home() {
       await setDoc(doc(db, "predictions", user.uid + "_" + matchday.id), {
         userId: user.uid, matchdayId: matchday.id, picks: newPredictions, updatedAt: new Date(),
       }, { merge: true });
+      await fetchGameStats(matchday.id);
     } catch (err) { console.error(err); }
     finally { setSaving(null); }
   };
@@ -262,62 +306,89 @@ export default function Home() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {games.map((g, index) => (
-              <motion.div key={g.id}
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.08 }}
-                className="bg-[#111] rounded-xl border border-[#1e1e1e] p-4 hover:border-[#2a2a2a] transition-colors"
-              >
-                {/* Mobile layout */}
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">{formatGameDate(g.date)}</span>
-                    {g.status === "live" && (
-                      <span className="text-[10px] bg-[#ff751f] text-black px-2 py-0.5 rounded font-medium inline-flex items-center gap-1">
-                        <span className="w-1 h-1 rounded-full bg-black animate-pulse inline-block"></span>
-                        LIVE
-                      </span>
-                    )}
+            {games.map((g, index) => {
+              const stats = gameStats[g.id];
+              return (
+                <motion.div key={g.id}
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.08 }}
+                  className="bg-[#111] rounded-xl border border-[#1e1e1e] p-4 hover:border-[#2a2a2a] transition-colors"
+                >
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400">{formatGameDate(g.date)}</span>
+                      {g.status === "live" && (
+                        <span className="text-[10px] bg-[#ff751f] text-black px-2 py-0.5 rounded font-medium inline-flex items-center gap-1">
+                          <span className="w-1 h-1 rounded-full bg-black animate-pulse inline-block"></span>
+                          LIVE
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {saving === g.id ? (
+                        <div className="w-4 h-4 border-2 border-[#ff751f] border-t-transparent rounded-full animate-spin"></div>
+                      ) : predictions[g.id] ? (
+                        <span className="text-[#ff751f] text-base">✓</span>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600">
-                    {saving === g.id ? (
-                      <div className="w-4 h-4 border-2 border-[#ff751f] border-t-transparent rounded-full animate-spin"></div>
-                    ) : predictions[g.id] ? (
-                      <span className="text-[#ff751f] text-base">✓</span>
-                    ) : null}
+
+                  <div className="text-sm font-medium text-center mb-3">
+                    {g.homeTeam} <span className="text-gray-600 text-xs mx-1">vs</span> {g.awayTeam}
                   </div>
-                </div>
 
-                <div className="text-sm font-medium text-center mb-3">
-                  {g.homeTeam} <span className="text-gray-600 text-xs mx-1">vs</span> {g.awayTeam}
-                </div>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <motion.button whileTap={{ scale: 0.97 }}
+                      onClick={() => handlePick(g.id, "home")} disabled={saving === g.id}
+                      className={`rounded-lg px-3 py-3 flex flex-col items-center gap-1 cursor-pointer transition-all ${
+                        predictions[g.id] === "home"
+                          ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f] shadow-[0_0_12px_rgba(255,117,31,0.1)]"
+                          : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
+                      }`}
+                    >
+                      <span className="text-xs font-medium text-center leading-tight">{g.homeTeam}</span>
+                      <span className="text-xs text-[#ff751f] font-medium">+{g.homePoints} πτς</span>
+                    </motion.button>
+                    <motion.button whileTap={{ scale: 0.97 }}
+                      onClick={() => handlePick(g.id, "away")} disabled={saving === g.id}
+                      className={`rounded-lg px-3 py-3 flex flex-col items-center gap-1 cursor-pointer transition-all ${
+                        predictions[g.id] === "away"
+                          ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f] shadow-[0_0_12px_rgba(255,117,31,0.1)]"
+                          : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
+                      }`}
+                    >
+                      <span className="text-xs font-medium text-center leading-tight">{g.awayTeam}</span>
+                      <span className="text-xs text-[#ff751f] font-medium">+{g.awayPoints} πτς</span>
+                    </motion.button>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <motion.button whileTap={{ scale: 0.97 }}
-                    onClick={() => handlePick(g.id, "home")} disabled={saving === g.id}
-                    className={`rounded-lg px-3 py-3 flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                      predictions[g.id] === "home"
-                        ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f] shadow-[0_0_12px_rgba(255,117,31,0.1)]"
-                        : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
-                    }`}
-                  >
-                    <span className="text-xs font-medium text-center leading-tight">{g.homeTeam}</span>
-                    <span className="text-xs text-[#ff751f] font-medium">+{g.homePoints} πτς</span>
-                  </motion.button>
-                  <motion.button whileTap={{ scale: 0.97 }}
-                    onClick={() => handlePick(g.id, "away")} disabled={saving === g.id}
-                    className={`rounded-lg px-3 py-3 flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                      predictions[g.id] === "away"
-                        ? "bg-[rgba(255,117,31,0.15)] border border-[#ff751f] shadow-[0_0_12px_rgba(255,117,31,0.1)]"
-                        : "bg-[#1a1a1a] border border-[#222] hover:border-[#ff751f]"
-                    }`}
-                  >
-                    <span className="text-xs font-medium text-center leading-tight">{g.awayTeam}</span>
-                    <span className="text-xs text-[#ff751f] font-medium">+{g.awayPoints} πτς</span>
-                  </motion.button>
-                </div>
-              </motion.div>
-            ))}
+                  {/* % bar */}
+                  {stats && stats.total > 0 && (
+                    <div className="mt-1">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] text-gray-600">{stats.homePct}%</span>
+                        <span className="text-[10px] text-gray-600">{stats.total} επιλογές</span>
+                        <span className="text-[10px] text-gray-600">{stats.awayPct}%</span>
+                      </div>
+                      <div className="h-1 rounded-full overflow-hidden bg-[#2a2a2a] flex">
+                        <motion.div
+                          className="h-1 bg-[#ff751f] rounded-l-full"
+                          initial={{ width: 0 }}
+                          animate={{ width: stats.homePct + "%" }}
+                          transition={{ duration: 0.5 }}
+                        />
+                        <motion.div
+                          className="h-1 bg-[#333] rounded-r-full flex-1"
+                          initial={{ width: 0 }}
+                          animate={{ width: stats.awayPct + "%" }}
+                          transition={{ duration: 0.5 }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
