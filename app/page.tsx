@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { getBadge } from "@/lib/badges";
 
 interface Game {
   id: string;
@@ -29,6 +30,12 @@ interface GameStats {
   homePct: number;
   awayPct: number;
   total: number;
+}
+
+interface TopUser {
+  id: string;
+  username: string;
+  points: number;
 }
 
 function CountdownTimer({ deadline }: { deadline: any }) {
@@ -99,10 +106,12 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [topUsers, setTopUsers] = useState<TopUser[]>([]);
+  const [myRank, setMyRank] = useState<number>(0);
 
   useEffect(() => {
     fetchCurrentMatchday();
-    fetchTotalUsers();
+    fetchLeaderboard();
   }, []);
 
   useEffect(() => {
@@ -113,10 +122,27 @@ export default function Home() {
     if (matchday && games.length > 0) fetchGameStats(matchday.id);
   }, [matchday, games]);
 
-  const fetchTotalUsers = async () => {
-    const snapshot = await getDocs(collection(db, "users"));
-    setTotalUsers(snapshot.size);
+  const fetchLeaderboard = async () => {
+    try {
+      const q = query(collection(db, "users"), orderBy("points", "desc"));
+      const snapshot = await getDocs(q);
+      const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TopUser));
+      setTotalUsers(all.length);
+      setTopUsers(all.slice(0, 5));
+    } catch (err) { console.error(err); }
   };
+
+  useEffect(() => {
+    if (user && topUsers.length > 0) {
+      const fetchRank = async () => {
+        const q = query(collection(db, "users"), orderBy("points", "desc"));
+        const snapshot = await getDocs(q);
+        const all = snapshot.docs.map(d => d.id);
+        setMyRank(all.indexOf(user.uid) + 1);
+      };
+      fetchRank();
+    }
+  }, [user, topUsers]);
 
   const fetchCurrentMatchday = async () => {
     try {
@@ -145,12 +171,8 @@ export default function Home() {
 
   const fetchGameStats = async (matchdayId: string) => {
     try {
-      const predictionsSnap = await getDocs(
-        query(collection(db, "predictions"))
-      );
-
+      const predictionsSnap = await getDocs(query(collection(db, "predictions")));
       const counts: Record<string, { home: number; away: number }> = {};
-
       for (const predDoc of predictionsSnap.docs) {
         const data = predDoc.data();
         if (data.matchdayId !== matchdayId) continue;
@@ -161,7 +183,6 @@ export default function Home() {
           else if (pick === "away") counts[gameId].away++;
         }
       }
-
       const stats: Record<string, GameStats> = {};
       for (const [gameId, { home, away }] of Object.entries(counts)) {
         const total = home + away;
@@ -362,7 +383,6 @@ export default function Home() {
                     </motion.button>
                   </div>
 
-                  {/* % bar */}
                   {stats && stats.total > 0 && (
                     <div className="mt-1">
                       <div className="flex justify-between items-center mb-1">
@@ -371,18 +391,10 @@ export default function Home() {
                         <span className="text-[10px] text-gray-600">{stats.awayPct}%</span>
                       </div>
                       <div className="h-1 rounded-full overflow-hidden bg-[#2a2a2a] flex">
-                        <motion.div
-                          className="h-1 bg-[#ff751f] rounded-l-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: stats.homePct + "%" }}
-                          transition={{ duration: 0.5 }}
-                        />
-                        <motion.div
-                          className="h-1 bg-[#333] rounded-r-full flex-1"
-                          initial={{ width: 0 }}
-                          animate={{ width: stats.awayPct + "%" }}
-                          transition={{ duration: 0.5 }}
-                        />
+                        <motion.div className="h-1 bg-[#ff751f] rounded-l-full"
+                          initial={{ width: 0 }} animate={{ width: stats.homePct + "%" }} transition={{ duration: 0.5 }} />
+                        <motion.div className="h-1 bg-[#333] rounded-r-full flex-1"
+                          initial={{ width: 0 }} animate={{ width: stats.awayPct + "%" }} transition={{ duration: 0.5 }} />
                       </div>
                     </div>
                   )}
@@ -395,23 +407,62 @@ export default function Home() {
 
       {/* Bottom widgets */}
       <div className="w-full max-w-7xl mx-auto px-5 md:px-10 pb-10 grid grid-cols-1 md:grid-cols-3 gap-3">
+
+        {/* Leaderboard widget */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
           className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5 hover:border-[#2a2a2a] transition-colors">
           <div className="flex justify-between items-center mb-4">
             <span className="text-[10px] tracking-[2px] text-gray-600">ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ</span>
             <a href="/leaderboard" className="text-xs text-[#ff751f] hover:underline">Δες όλους →</a>
           </div>
-          <div className="text-gray-500 text-sm">Σύντομα...</div>
+          {topUsers.length === 0 ? (
+            <div className="text-gray-500 text-sm">Κανένας παίκτης ακόμα.</div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {topUsers.map((u, i) => {
+                const badge = getBadge(i + 1, totalUsers);
+                const isMe = user?.uid === u.id;
+                return (
+                  <div key={u.id} className={`flex items-center gap-2 ${isMe ? "bg-[rgba(255,117,31,0.05)] rounded-lg px-2 py-1 -mx-2" : ""}`}>
+                    <span className="text-xs text-gray-600 w-4">{i < 3 ? ["🥇","🥈","🥉"][i] : i + 1}</span>
+                    <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[10px] font-medium text-white flex-shrink-0">
+                      {u.username?.[0]?.toUpperCase() || "?"}
+                    </div>
+                    <span className="text-xs text-white flex-1 truncate">
+                      {u.username}
+                      {isMe && <span className="text-[#ff751f] ml-1">(εσύ)</span>}
+                    </span>
+                    <span className="text-xs text-[#ff751f] font-medium">{u.points}</span>
+                  </div>
+                );
+              })}
+              {myRank > 5 && user && (
+                <div className="border-t border-[#1a1a1a] pt-2 mt-1">
+                  <div className="flex items-center gap-2 bg-[rgba(255,117,31,0.05)] rounded-lg px-2 py-1">
+                    <span className="text-xs text-gray-600 w-4">{myRank}</span>
+                    <div className="w-6 h-6 rounded-full bg-[#ff751f] flex items-center justify-center text-[10px] font-medium text-black flex-shrink-0">
+                      {user.displayName?.[0]?.toUpperCase() || "?"}
+                    </div>
+                    <span className="text-xs text-white flex-1 truncate">{user.displayName} <span className="text-[#ff751f]">(εσύ)</span></span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </motion.div>
 
+        {/* My position widget */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
           className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5 hover:border-[#2a2a2a] transition-colors">
           <div className="text-[10px] tracking-[2px] text-gray-600 mb-4">Η ΘΕΣΗ ΜΟΥ</div>
           {user ? (
             <div>
-              <div className="text-sm text-white font-medium mb-1">{user.displayName}</div>
-              <div className="text-xs text-gray-500">{pickedCount}/{games.length} προβλέψεις αυτή την αγωνιστική</div>
-              <div className="mt-3 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm text-white font-medium">{user.displayName}</div>
+                {myRank > 0 && <div className="text-lg font-medium text-[#ff751f]">#{myRank}</div>}
+              </div>
+              <div className="text-xs text-gray-500 mb-3">{pickedCount}/{games.length} προβλέψεις αυτή την αγωνιστική</div>
+              <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
                 <motion.div className="h-1 bg-[#ff751f] rounded-full"
                   initial={{ width: 0 }} animate={{ width: progressPct + "%" }} transition={{ duration: 0.5 }} />
               </div>
@@ -424,6 +475,7 @@ export default function Home() {
           )}
         </motion.div>
 
+        {/* Challenge widget */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}
           className="bg-[#111] rounded-xl border border-[#1e1e1e] p-5 hover:border-[#2a2a2a] transition-colors">
           <div className="text-[10px] tracking-[2px] text-gray-600 mb-4">ΕΒΔΟΜΑΔΙΑΙΟ CHALLENGE</div>
