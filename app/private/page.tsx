@@ -88,97 +88,130 @@ export default function PrivatePage() {
 
   return (
     <AuthGuard>
-      <main className="min-h-screen bg-[#0a0a0a] text-white">
+      <main className="min-h-screen bg-[#080808] text-white">
         <Navbar />
 
-        <div className="w-full max-w-4xl mx-auto px-5 md:px-10 py-8 md:py-12">
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#ff751f] animate-pulse"></div>
-              <span className="text-[#ff751f] text-xs tracking-[3px]">EURODRAFT</span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-medium mb-6 md:mb-8">Ιδιωτικά Πρωταθλήματα</h1>
-          </motion.div>
+        {/* Header */}
+        <div className="relative overflow-hidden border-b border-[#1a1a1a]">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-[-50px] left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#ff751f] opacity-[0.05] blur-[100px] rounded-full"></div>
+            <div className="absolute inset-0 opacity-[0.02]" style={{
+              backgroundImage: "linear-gradient(#ff751f 1px, transparent 1px), linear-gradient(90deg, #ff751f 1px, transparent 1px)",
+              backgroundSize: "60px 60px"
+            }}></div>
+          </div>
+          <div className="w-full max-w-4xl mx-auto px-5 md:px-10 py-10 relative">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 rounded-full bg-[#ff751f] animate-pulse shadow-[0_0_8px_rgba(255,117,31,0.8)]"></div>
+                <span className="text-[#ff751f] text-xs tracking-[4px] font-medium">EURODRAFT</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight">Ιδιωτικά Πρωταθλήματα</h1>
+              <p className="text-gray-600 text-sm mt-2">Δημιούργησε ή εντάξου σε ένα πρωτάθλημα με φίλους.</p>
+            </motion.div>
+          </div>
+        </div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:p-6">
-              <h2 className="text-base md:text-lg font-medium mb-4">Δημιούργησε πρωτάθλημα</h2>
+        <div className="w-full max-w-4xl mx-auto px-5 md:px-10 py-8 md:py-10">
+
+          {/* Create/Join */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+
+            {/* Create */}
+            <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-6 hover:border-[#2a2a2a] transition-all">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-[rgba(255,117,31,0.1)] border border-[rgba(255,117,31,0.2)] flex items-center justify-center text-lg">➕</div>
+                <h2 className="text-base font-black">Δημιούργησε πρωτάθλημα</h2>
+              </div>
               <form onSubmit={handleCreate} className="flex flex-col gap-3">
                 <div>
-                  <label className="text-xs text-gray-500 mb-1.5 block">Όνομα πρωταθλήματος</label>
+                  <label className="text-xs text-gray-600 mb-1.5 block font-medium uppercase tracking-widest">Όνομα πρωταθλήματος</label>
                   <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                    className="w-full bg-[#151515] border border-[#1e1e1e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-colors placeholder-gray-700"
                     placeholder="π.χ. Παρέα Σπύρου" required />
                 </div>
                 <button type="submit" disabled={creating}
-                  className="bg-[#ff751f] text-black font-medium px-6 py-2.5 rounded-lg text-sm hover:bg-[#e6671a] disabled:opacity-50">
+                  className="bg-[#ff751f] text-black font-black px-6 py-3 rounded-xl text-sm hover:bg-[#e6671a] disabled:opacity-50 transition-all shadow-[0_0_20px_rgba(255,117,31,0.2)] hover:shadow-[0_0_30px_rgba(255,117,31,0.4)]">
                   {creating ? "Δημιουργία..." : "Δημιούργησε"}
                 </button>
               </form>
             </div>
 
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:p-6">
-              <h2 className="text-base md:text-lg font-medium mb-4">Εντάξου σε πρωτάθλημα</h2>
+            {/* Join */}
+            <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-6 hover:border-[#2a2a2a] transition-all">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-[rgba(255,117,31,0.1)] border border-[rgba(255,117,31,0.2)] flex items-center justify-center text-lg">🔗</div>
+                <h2 className="text-base font-black">Εντάξου σε πρωτάθλημα</h2>
+              </div>
               <form onSubmit={handleJoin} className="flex flex-col gap-3">
                 <div>
-                  <label className="text-xs text-gray-500 mb-1.5 block">Κωδικός πρωταθλήματος</label>
+                  <label className="text-xs text-gray-600 mb-1.5 block font-medium uppercase tracking-widest">Κωδικός πρωταθλήματος</label>
                   <input type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                    className="w-full bg-[#151515] border border-[#1e1e1e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-colors placeholder-gray-700 font-mono tracking-widest uppercase"
                     placeholder="π.χ. ABC123" maxLength={6} required />
                 </div>
                 <button type="submit" disabled={joining}
-                  className="border border-[#ff751f] text-[#ff751f] font-medium px-6 py-2.5 rounded-lg text-sm hover:bg-[rgba(255,117,31,0.1)] disabled:opacity-50">
+                  className="border border-[#ff751f] text-[#ff751f] font-black px-6 py-3 rounded-xl text-sm hover:bg-[rgba(255,117,31,0.08)] disabled:opacity-50 transition-all">
                   {joining ? "Αναζήτηση..." : "Εντάξου"}
                 </button>
               </form>
             </div>
           </motion.div>
 
-          <h2 className="text-base md:text-lg font-medium mb-4">Τα πρωταθλήματά μου</h2>
-          {loading ? (
-            <div className="flex flex-col gap-3">
-              {[1,2].map(i => <div key={i} className="bg-[#111] border border-[#1e1e1e] rounded-xl h-24 animate-pulse"></div>)}
+          {/* My leagues */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-base font-black">Τα πρωταθλήματά μου</h2>
+              <span className="text-xs text-gray-600 bg-[#151515] border border-[#1a1a1a] px-2 py-0.5 rounded-full">{leagues.length}</span>
             </div>
-          ) : leagues.length === 0 ? (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-8 text-center text-gray-500 text-sm">
-              Δεν είσαι μέλος κανενός ιδιωτικού πρωταθλήματος ακόμα.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {leagues.map((league, i) => (
-                <motion.a
-                  key={league.id}
-                  href={"/private/" + league.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 md:px-6 py-4 block hover:border-[#ff751f] transition-colors"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="min-w-0 flex-1 mr-3">
-                      <div className="font-medium text-base md:text-lg truncate">{league.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">Δημιουργός: {league.ownerName}</div>
+
+            {loading ? (
+              <div className="flex flex-col gap-3">
+                {[1,2].map(i => <div key={i} className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl h-28 animate-pulse"></div>)}
+              </div>
+            ) : leagues.length === 0 ? (
+              <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-10 text-center">
+                <div className="text-4xl mb-3">🏆</div>
+                <div className="text-gray-600 text-sm">Δεν είσαι μέλος κανενός ιδιωτικού πρωταθλήματος ακόμα.</div>
+                <div className="text-gray-700 text-xs mt-1">Δημιούργησε ένα ή εντάξου με κωδικό.</div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {leagues.map((league, i) => (
+                  <motion.a
+                    key={league.id}
+                    href={"/private/" + league.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl px-5 md:px-6 py-5 block hover:border-[#ff751f]/40 hover:shadow-[0_0_30px_rgba(255,117,31,0.05)] transition-all group"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="min-w-0 flex-1 mr-4">
+                        <div className="font-black text-lg truncate group-hover:text-[#ff751f] transition-colors">{league.name}</div>
+                        <div className="text-xs text-gray-600 mt-0.5">Δημιουργός: {league.ownerName}</div>
+                      </div>
+                      <div className="text-right flex-shrink-0 bg-[#151515] border border-[#1e1e1e] rounded-xl px-3 py-2">
+                        <div className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Κωδικός</div>
+                        <div className="font-mono font-black text-[#ff751f] text-lg tracking-widest">{league.code}</div>
+                      </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-xs text-gray-500 mb-1">Κωδικός</div>
-                      <div className="font-mono font-medium text-[#ff751f] text-base md:text-lg tracking-widest">{league.code}</div>
+                    <div className="border-t border-[#151515] pt-3">
+                      <div className="text-xs text-gray-600 mb-2 font-medium">Μέλη ({league.members.length})</div>
+                      <div className="flex gap-2 flex-wrap">
+                        {league.memberNames.map((memberName: string, i: number) => (
+                          <span key={i} className="text-xs bg-[#151515] border border-[#1e1e1e] px-2.5 py-1 rounded-full text-gray-300 font-medium">
+                            {memberName}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="border-t border-[#1a1a1a] pt-3">
-                    <div className="text-xs text-gray-500 mb-2">Μέλη ({league.members.length})</div>
-                    <div className="flex gap-2 flex-wrap">
-                      {league.memberNames.map((memberName: string, i: number) => (
-                        <span key={i} className="text-xs bg-[#1a1a1a] border border-[#2a2a2a] px-2.5 py-1 rounded-full text-white">
-                          {memberName}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </motion.a>
-              ))}
-            </div>
-          )}
+                  </motion.a>
+                ))}
+              </div>
+            )}
+          </motion.div>
         </div>
       </main>
     </AuthGuard>

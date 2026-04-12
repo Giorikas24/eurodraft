@@ -17,7 +17,6 @@ interface Message {
 }
 
 const COLORS = ["#ff751f", "#AFA9EC", "#FAC775", "#5DCAA5", "#F0997B", "#85B7EB"];
-
 const getUserColor = (userId: string) => {
   let hash = 0;
   for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
@@ -36,8 +35,7 @@ export default function ChatPage() {
   useEffect(() => {
     const q = query(collection(db, "chat"), orderBy("createdAt", "asc"), limit(100));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message));
-      setMessages(data);
+      setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Message)));
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     });
     return () => unsubscribe();
@@ -57,11 +55,8 @@ export default function ChatPage() {
       });
       setText("");
       inputRef.current?.focus();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSending(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setSending(false); }
   };
 
   const formatTime = (date: any) => {
@@ -79,49 +74,59 @@ export default function ChatPage() {
   const groupedMessages = messages.reduce((groups: { date: string; messages: Message[] }[], msg) => {
     const date = formatDate(msg.createdAt);
     const lastGroup = groups[groups.length - 1];
-    if (lastGroup && lastGroup.date === date) {
-      lastGroup.messages.push(msg);
-    } else {
-      groups.push({ date, messages: [msg] });
-    }
+    if (lastGroup && lastGroup.date === date) lastGroup.messages.push(msg);
+    else groups.push({ date, messages: [msg] });
     return groups;
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <main className="min-h-screen bg-[#080808] text-white flex flex-col">
       <Navbar />
 
-      <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-6 md:py-8 flex flex-col flex-1">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#ff751f] animate-pulse"></div>
-            <span className="text-[#ff751f] text-xs tracking-[3px]">EURODRAFT</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl md:text-3xl font-medium">Chat</h1>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-              {messages.length} μηνύματα
+      {/* Header */}
+      <div className="relative overflow-hidden border-b border-[#1a1a1a] flex-shrink-0">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[-50px] left-1/2 -translate-x-1/2 w-[500px] h-[200px] bg-[#ff751f] opacity-[0.04] blur-[100px] rounded-full"></div>
+        </div>
+        <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-8 relative">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-2 h-2 rounded-full bg-[#ff751f] animate-pulse shadow-[0_0_8px_rgba(255,117,31,0.8)]"></div>
+              <span className="text-[#ff751f] text-xs tracking-[4px] font-medium">EURODRAFT</span>
             </div>
-          </div>
-        </motion.div>
+            <div className="flex items-center justify-between">
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight">Chat</h1>
+              <div className="flex items-center gap-2 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl px-3 py-2">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_6px_rgba(74,222,128,0.8)]"></div>
+                <span className="text-xs text-gray-400 font-medium">{messages.length} μηνύματα</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
 
+      <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-6 flex flex-col flex-1">
+
+        {/* Messages */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-          className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3 md:p-4 flex flex-col gap-2 flex-1 min-h-[400px] md:h-[520px] overflow-y-auto mb-4 scroll-smooth"
+          className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-4 flex flex-col gap-1 flex-1 min-h-[400px] md:h-[520px] overflow-y-auto mb-4 scroll-smooth"
         >
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-3">
-              <div className="text-4xl">💬</div>
-              <div className="text-gray-500 text-sm text-center">Δεν υπάρχουν μηνύματα ακόμα.<br />Ξεκίνα τη συζήτηση!</div>
+              <div className="w-16 h-16 rounded-2xl bg-[#151515] border border-[#1a1a1a] flex items-center justify-center text-3xl">💬</div>
+              <div className="text-gray-600 text-sm text-center leading-relaxed">
+                Δεν υπάρχουν μηνύματα ακόμα.<br />
+                <span className="text-gray-500">Ξεκίνα τη συζήτηση!</span>
+              </div>
             </div>
           )}
 
           {groupedMessages.map((group, gi) => (
             <div key={gi}>
-              <div className="flex items-center gap-3 my-3">
-                <div className="flex-1 h-px bg-[#1e1e1e]"></div>
-                <span className="text-[10px] text-gray-600">{group.date}</span>
-                <div className="flex-1 h-px bg-[#1e1e1e]"></div>
+              <div className="flex items-center gap-3 my-4">
+                <div className="flex-1 h-px bg-[#1a1a1a]"></div>
+                <span className="text-[10px] text-gray-600 bg-[#151515] border border-[#1a1a1a] px-3 py-1 rounded-full">{group.date}</span>
+                <div className="flex-1 h-px bg-[#1a1a1a]"></div>
               </div>
               {group.messages.map((msg, mi) => {
                 const isMe = user?.uid === msg.userId;
@@ -131,28 +136,30 @@ export default function ChatPage() {
                 return (
                   <AnimatePresence key={msg.id}>
                     <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                      initial={{ opacity: 0, y: 8, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       transition={{ duration: 0.2 }}
-                      className={`flex gap-2 ${isMe ? "flex-row-reverse" : ""} ${!showAvatar ? (isMe ? "mr-10" : "ml-10") : ""}`}
+                      className={`flex gap-2.5 mb-1 ${isMe ? "flex-row-reverse" : ""} ${!showAvatar ? (isMe ? "mr-11" : "ml-11") : ""}`}
                     >
                       {showAvatar ? (
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-black font-medium text-xs flex-shrink-0 mt-1"
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-black font-black text-xs flex-shrink-0 mt-1 shadow-lg"
                           style={{ backgroundColor: color }}>
                           {msg.username?.[0]?.toUpperCase() || "?"}
                         </div>
                       ) : (
                         <div className="w-8 flex-shrink-0"></div>
                       )}
-                      <div className={`max-w-[80%] md:max-w-[75%] flex flex-col gap-0.5 ${isMe ? "items-end" : "items-start"}`}>
+                      <div className={`max-w-[80%] md:max-w-[75%] flex flex-col gap-1 ${isMe ? "items-end" : "items-start"}`}>
                         {showAvatar && (
                           <div className="flex items-center gap-2 px-1">
-                            {!isMe && <span className="text-xs font-medium" style={{ color }}>{msg.username}</span>}
+                            {!isMe && <span className="text-xs font-bold" style={{ color }}>{msg.username}</span>}
                             <span className="text-[10px] text-gray-600">{formatTime(msg.createdAt)}</span>
                           </div>
                         )}
-                        <div className={`px-3 md:px-4 py-2 md:py-2.5 rounded-2xl text-sm break-words ${
-                          isMe ? "bg-[#ff751f] text-black rounded-tr-sm" : "bg-[#1a1a1a] text-white rounded-tl-sm border border-[#2a2a2a]"
+                        <div className={`px-4 py-2.5 rounded-2xl text-sm break-words leading-relaxed ${
+                          isMe
+                            ? "bg-gradient-to-br from-[#ff751f] to-[#e6671a] text-black font-medium rounded-tr-sm shadow-[0_0_15px_rgba(255,117,31,0.2)]"
+                            : "bg-[#151515] text-white rounded-tl-sm border border-[#1e1e1e]"
                         }`}>
                           {msg.text}
                         </div>
@@ -166,25 +173,26 @@ export default function ChatPage() {
           <div ref={bottomRef} />
         </motion.div>
 
+        {/* Input */}
         {user ? (
           <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
             onSubmit={handleSend} className="flex gap-2 md:gap-3">
             <div className="flex-1 relative">
               <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value)}
-                className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f] transition-colors pr-12"
+                className="w-full bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl px-4 py-3.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f] transition-all pr-12"
                 placeholder="Γράψε μήνυμα..." maxLength={500} />
               {text.length > 400 && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">{500 - text.length}</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-gray-600">{500 - text.length}</span>
               )}
             </div>
             <motion.button whileTap={{ scale: 0.95 }} type="submit" disabled={sending || !text.trim()}
-              className="bg-[#ff751f] text-black font-medium px-4 md:px-6 py-3 rounded-xl text-sm hover:bg-[#e6671a] disabled:opacity-50 transition-colors flex items-center gap-2">
+              className="bg-[#ff751f] text-black font-black px-4 md:px-6 py-3.5 rounded-2xl text-sm hover:bg-[#e6671a] disabled:opacity-50 transition-all shadow-[0_0_20px_rgba(255,117,31,0.3)] hover:shadow-[0_0_30px_rgba(255,117,31,0.5)] flex items-center gap-2">
               {sending ? (
                 <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
                   <span className="hidden md:inline">Αποστολή</span>
-                  <svg className="md:hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                   </svg>
@@ -194,10 +202,10 @@ export default function ChatPage() {
           </motion.form>
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">
-            <span className="text-gray-500 text-sm">
-              <a href="/auth/login" className="text-[#ff751f] hover:underline">Συνδέσου</a> για να στείλεις μήνυμα
-            </span>
+            className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5 text-center">
+            <div className="text-gray-500 text-sm">
+              <a href="/auth/login" className="text-[#ff751f] hover:underline font-bold">Συνδέσου</a> για να στείλεις μήνυμα
+            </div>
           </motion.div>
         )}
       </div>
