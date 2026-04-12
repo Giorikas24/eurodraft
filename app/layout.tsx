@@ -1,21 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const inter = Inter({
+  subsets: ["latin", "greek"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "EuroDraft",
-  description: "Euroleague Predictions Platform",
+  title: "EuroDraft — Euroleague Predictions",
+  description: "Κάνε τις προβλέψεις σου για κάθε ματς της Euroleague, μάζεψε πόντους και ανέβα στην παγκόσμια κατάταξη.",
+  keywords: ["euroleague", "predictions", "basketball", "eurodraft"],
+  openGraph: {
+    title: "EuroDraft — Euroleague Predictions",
+    description: "Κάνε τις προβλέψεις σου για κάθε ματς της Euroleague",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -24,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="el">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="el" className="dark">
+      <body className={`${inter.variable} font-sans antialiased bg-[#080808] text-white min-h-screen`}>
         <AuthProvider>
           {children}
         </AuthProvider>
