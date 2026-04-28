@@ -109,7 +109,7 @@ export default function PrivatePage() {
                   <label className="text-xs text-gray-500 mb-1.5 block">Όνομα πρωταθλήματος</label>
                   <input type="text" value={name} onChange={(e) => setName(e.target.value)}
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                    placeholder="π.χ. Παρέα Σπύρου" required />
+                    placeholder="" required />
                 </div>
                 <button type="submit" disabled={creating}
                   className="bg-[#ff751f] text-black font-medium px-6 py-2.5 rounded-lg text-sm hover:bg-[#e6671a] disabled:opacity-50">
