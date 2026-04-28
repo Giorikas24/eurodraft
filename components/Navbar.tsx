@@ -40,9 +40,9 @@ export default function Navbar() {
       <nav className="bg-black border-b border-[#1a1a1a] h-16 flex items-center justify-center sticky top-0 z-50">
         <div className="w-full max-w-7xl mx-auto px-5 md:px-10 flex items-center justify-between">
           <a href="/" className="font-bold text-xl md:text-2xl tracking-widest">
-            <span className="text-[#ff751f]">EURO</span>
-            <span className="text-white">DRAFT</span>
-          </a>
+  <span className="text-[#ff751f]">COURT</span>
+  <span className="text-white">PROPHET</span>
+</a>
 
           {/* Desktop links */}
           <div className="hidden md:flex gap-8">
