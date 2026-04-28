@@ -2,98 +2,103 @@ import Navbar from "@/components/Navbar";
 
 export default function RulesPage() {
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white">
+    <main className="min-h-screen bg-[#080808] text-white">
       <Navbar />
 
-      <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-8 md:py-12">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#ff751f]"></div>
-          <span className="text-[#ff751f] text-xs tracking-[3px]">EURODRAFT</span>
+      {/* Header */}
+      <div className="relative overflow-hidden border-b border-[#1a1a1a]">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[-50px] left-1/2 -translate-x-1/2 w-[500px] h-[250px] bg-[#ff751f] opacity-[0.05] blur-[100px] rounded-full"></div>
+          <div className="absolute inset-0 opacity-[0.02]" style={{
+            backgroundImage: "linear-gradient(#ff751f 1px, transparent 1px), linear-gradient(90deg, #ff751f 1px, transparent 1px)",
+            backgroundSize: "60px 60px"
+          }}></div>
         </div>
-        <h1 className="text-2xl md:text-3xl font-medium mb-8 md:mb-10">Κανόνες</h1>
-
-        <div className="flex flex-col gap-4 md:gap-6">
-
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:p-6">
-            <h2 className="text-base md:text-lg font-medium text-[#ff751f] mb-3">Τι είναι το EuroDraft;</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Το EuroDraft είναι μια πλατφόρμα προβλέψεων για τα παιχνίδια της Euroleague. Κάθε αγωνιστική κάνεις τις προβλέψεις σου, μαζεύεις πόντους και ανεβαίνεις στην κατάταξη.
-            </p>
+        <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-10 relative">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-[#ff751f] animate-pulse shadow-[0_0_8px_rgba(255,117,31,0.8)]"></div>
+            <span className="text-[#ff751f] text-xs tracking-[4px] font-medium">COURTPROPHET</span>
           </div>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight">Κανόνες</h1>
+          <p className="text-gray-600 text-sm mt-2">Όλα όσα χρειάζεται να ξέρεις για το CourtProphet.</p>
+        </div>
+      </div>
 
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:p-6">
-            <h2 className="text-base md:text-lg font-medium text-[#ff751f] mb-3">Σύστημα πόντων</h2>
-            <p className="text-gray-400 text-sm leading-relaxed mb-4">
-              Για κάθε παιχνίδι μοιράζονται 10 πόντοι ανάλογα με τις αποδόσεις. Όσο πιο απίθανο το αποτέλεσμα, τόσο περισσότεροι πόντοι.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#1a1a1a] rounded-lg p-3 md:p-4">
-                <div className="text-white font-medium mb-1 text-sm md:text-base">Σωστή πρόβλεψη</div>
-                <div className="text-[#ff751f] text-xl md:text-2xl font-medium">+2 έως +9</div>
-                <div className="text-gray-500 text-xs mt-1">ανάλογα με την απόδοση</div>
-              </div>
-              <div className="bg-[#1a1a1a] rounded-lg p-3 md:p-4">
-                <div className="text-white font-medium mb-1 text-sm md:text-base">Λάθος πρόβλεψη</div>
-                <div className="text-red-400 text-xl md:text-2xl font-medium">-1</div>
-                <div className="text-gray-500 text-xs mt-1">πόντος αφαίρεση</div>
-              </div>
+      <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-8 flex flex-col gap-4">
+
+        {/* Points system */}
+        <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5 md:p-6 hover:border-[#2a2a2a] transition-all">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-xl bg-[rgba(255,117,31,0.1)] border border-[rgba(255,117,31,0.2)] flex items-center justify-center text-base">🎯</div>
+            <h2 className="text-base md:text-lg font-black text-[#ff751f]">Τι είναι το CourtProphet;</h2>
+          </div>
+          <p className="text-gray-500 text-sm leading-relaxed">
+            Το CourtProphet είναι μια πλατφόρμα προβλέψεων για τα παιχνίδια της Euroleague. Κάθε αγωνιστική κάνεις τις προβλέψεις σου, μαζεύεις πόντους και ανεβαίνεις στην κατάταξη.
+          </p>
+        </div>
+
+        {/* Points */}
+        <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5 md:p-6 hover:border-[#2a2a2a] transition-all">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-xl bg-[rgba(255,117,31,0.1)] border border-[rgba(255,117,31,0.2)] flex items-center justify-center text-base">🎯</div>
+            <h2 className="text-base md:text-lg font-black text-[#ff751f]">Σύστημα πόντων</h2>
+          </div>
+          <p className="text-gray-500 text-sm leading-relaxed mb-4">
+            Για κάθε παιχνίδι μοιράζονται 10 πόντοι ανάλογα με τις αποδόσεις. Όσο πιο απίθανο το αποτέλεσμα, τόσο περισσότεροι πόντοι.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-[rgba(255,117,31,0.06)] border border-[rgba(255,117,31,0.15)] rounded-xl p-4">
+              <div className="text-white font-bold mb-1 text-sm">Σωστή πρόβλεψη</div>
+              <div className="text-[#ff751f] text-2xl md:text-3xl font-black">+2 έως +9</div>
+              <div className="text-gray-600 text-xs mt-1">ανάλογα με την απόδοση</div>
+            </div>
+            <div className="bg-[rgba(248,113,113,0.06)] border border-[rgba(248,113,113,0.15)] rounded-xl p-4">
+              <div className="text-white font-bold mb-1 text-sm">Λάθος πρόβλεψη</div>
+              <div className="text-red-400 text-2xl md:text-3xl font-black">-1</div>
+              <div className="text-gray-600 text-xs mt-1">πόντος αφαίρεση</div>
             </div>
           </div>
-
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:p-6">
-            <h2 className="text-base md:text-lg font-medium text-[#ff751f] mb-3">Deadline προβλέψεων</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Κάθε αγωνιστική έχει ένα deadline — συνήθως λίγο πριν αρχίσει το πρώτο ματς. Μετά το deadline δεν μπορείς να αλλάξεις τις προβλέψεις σου.
-            </p>
-          </div>
-
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:p-6">
-            <h2 className="text-base md:text-lg font-medium text-[#ff751f] mb-3">Κατηγορίες παικτών</h2>
-            <p className="text-gray-400 text-sm leading-relaxed mb-4">
-              Οι παίκτες χωρίζονται σε 4 κατηγορίες ανάλογα με την κατάταξή τους:
-            </p>
-            <div className="grid grid-cols-2 gap-2 md:gap-3">
-              <div className="bg-[#1a1540] rounded-lg p-3 flex items-center gap-2 md:gap-3">
-                <span className="text-[9px] px-2 py-0.5 rounded font-medium bg-[#1a1540] text-[#AFA9EC] border border-[#AFA9EC] flex-shrink-0">PLATINUM</span>
-                <span className="text-[#AFA9EC] text-xs md:text-sm">Κορυφαίο 25%</span>
-              </div>
-              <div className="bg-[#3a2e00] rounded-lg p-3 flex items-center gap-2 md:gap-3">
-                <span className="text-[9px] px-2 py-0.5 rounded font-medium bg-[#3a2e00] text-[#FAC775] border border-[#FAC775] flex-shrink-0">GOLD</span>
-                <span className="text-[#FAC775] text-xs md:text-sm">26% - 50%</span>
-              </div>
-              <div className="bg-[#222] rounded-lg p-3 flex items-center gap-2 md:gap-3">
-                <span className="text-[9px] px-2 py-0.5 rounded font-medium bg-[#222] text-[#ccc] border border-[#ccc] flex-shrink-0">SILVER</span>
-                <span className="text-[#ccc] text-xs md:text-sm">51% - 75%</span>
-              </div>
-              <div className="bg-[#2a1500] rounded-lg p-3 flex items-center gap-2 md:gap-3">
-                <span className="text-[9px] px-2 py-0.5 rounded font-medium bg-[#2a1500] text-[#F0997B] border border-[#F0997B] flex-shrink-0">BRONZE</span>
-                <span className="text-[#F0997B] text-xs md:text-sm">76% - 100%</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:p-6">
-            <h2 className="text-base md:text-lg font-medium text-[#ff751f] mb-3">Εβδομαδιαία Challenges</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Κάθε αγωνιστική υπάρχει ένα ειδικό challenge με bonus πόντους. Π.χ. "Βρες 4 σωστά ειδικά παικτών και κέρδισε +10 πόντους". Επίσης, αν έχεις 100% στις προβλέψεις μιας αγωνιστικής, κερδίζεις +10 bonus πόντους!
-            </p>
-          </div>
-
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:p-6">
-            <h2 className="text-base md:text-lg font-medium text-[#ff751f] mb-3">Κύπελλο</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Τις πρώτες 8 αγωνιστικές κάθε σεζόν κατατάσσουν τους παίκτες στις 4 κατηγορίες. Μετά ξεκινά μια παράλληλη knock-out διοργάνωση — το Κύπελλο — όπου οι παίκτες της ίδιας κατηγορίας παίζουν μεταξύ τους με κλήρωση.
-            </p>
-          </div>
-
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:p-6">
-            <h2 className="text-base md:text-lg font-medium text-[#ff751f] mb-3">Ιδιωτικά πρωταθλήματα</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Μπορείς να φτιάξεις το δικό σου πρωτάθλημα με φίλους. Δημιούργησε ένα ιδιωτικό league, μοιράσου τον κωδικό και ανταγωνίσου με την παρέα σου παράλληλα με τη γενική κατάταξη.
-            </p>
-          </div>
-
         </div>
+
+        {/* Categories */}
+        <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5 md:p-6 hover:border-[#2a2a2a] transition-all">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-xl bg-[rgba(255,117,31,0.1)] border border-[rgba(255,117,31,0.2)] flex items-center justify-center text-base">🏅</div>
+            <h2 className="text-base md:text-lg font-black text-[#ff751f]">Κατηγορίες παικτών</h2>
+          </div>
+          <p className="text-gray-500 text-sm leading-relaxed mb-4">
+            Οι παίκτες χωρίζονται σε 4 κατηγορίες ανάλογα με την κατάταξή τους:
+          </p>
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
+            {[
+              { label: "PLATINUM", range: "Κορυφαίο 25%", bg: "bg-[#1a1540]", text: "text-[#AFA9EC]", border: "border-[#AFA9EC]/20" },
+              { label: "GOLD", range: "26% — 50%", bg: "bg-[#3a2e00]", text: "text-[#FAC775]", border: "border-[#FAC775]/20" },
+              { label: "SILVER", range: "51% — 75%", bg: "bg-[#222]", text: "text-[#ccc]", border: "border-[#ccc]/10" },
+              { label: "BRONZE", range: "76% — 100%", bg: "bg-[#2a1500]", text: "text-[#F0997B]", border: "border-[#F0997B]/20" },
+            ].map((cat) => (
+              <div key={cat.label} className={`${cat.bg} border ${cat.border} rounded-xl p-3.5 flex items-center gap-3`}>
+                <span className={`text-[9px] px-2.5 py-1 rounded-full font-black ${cat.bg} ${cat.text} border ${cat.border} flex-shrink-0`}>{cat.label}</span>
+                <span className={`${cat.text} text-xs md:text-sm font-medium`}>{cat.range}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {[
+          { icon: "⏰", title: "Deadline προβλέψεων", content: "Κάθε αγωνιστική έχει ένα deadline — συνήθως λίγο πριν αρχίσει το πρώτο ματς. Μετά το deadline δεν μπορείς να αλλάξεις τις προβλέψεις σου." },
+          { icon: "⚡", title: "Εβδομαδιαία Challenges", content: "Κάθε αγωνιστική υπάρχει ένα ειδικό challenge με bonus πόντους. Π.χ. \"Βρες 5 σωστά και κέρδισε +10 πόντους\". Επίσης, αν έχεις 100% στις προβλέψεις μιας αγωνιστικής, κερδίζεις αυτόματα +10 bonus πόντους!" },
+          { icon: "🏆", title: "Κύπελλο", content: "Τις πρώτες 8 αγωνιστικές κατατάσσουν τους παίκτες στις 4 κατηγορίες. Μετά ξεκινά το Κύπελλο — knock-out διοργάνωση όπου παίκτες της ίδιας κατηγορίας παίζουν μεταξύ τους." },
+          { icon: "🔒", title: "Ιδιωτικά πρωταθλήματα", content: "Μπορείς να φτιάξεις το δικό σου πρωτάθλημα με φίλους. Δημιούργησε ένα ιδιωτικό league, μοιράσου τον κωδικό και ανταγωνίσου με την παρέα σου παράλληλα με τη γενική κατάταξη." },
+        ].map((s, i) => (
+          <div key={i} className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5 md:p-6 hover:border-[#2a2a2a] transition-all">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-[rgba(255,117,31,0.1)] border border-[rgba(255,117,31,0.2)] flex items-center justify-center text-base">{s.icon}</div>
+              <h2 className="text-base md:text-lg font-black text-[#ff751f]">{s.title}</h2>
+            </div>
+            <p className="text-gray-500 text-sm leading-relaxed">{s.content}</p>
+          </div>
+        ))}
+
       </div>
     </main>
   );

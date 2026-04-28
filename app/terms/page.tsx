@@ -10,8 +10,8 @@ export default function TermsPage() {
         </div>
         <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-10 relative">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-[#ff751f]"></div>
-            <span className="text-[#ff751f] text-xs tracking-[4px] font-medium">EURODRAFT</span>
+            <div className="w-2 h-2 rounded-full bg-[#ff751f] animate-pulse shadow-[0_0_8px_rgba(255,117,31,0.8)]"></div>
+            <span className="text-[#ff751f] text-xs tracking-[4px] font-medium">COURTPROPHET</span>
           </div>
           <h1 className="text-3xl font-black tracking-tight">Όροι Χρήσης</h1>
           <p className="text-gray-600 text-sm mt-2">Τελευταία ενημέρωση: Απρίλιος 2026</p>
@@ -22,11 +22,11 @@ export default function TermsPage() {
         {[
           {
             title: "1. Αποδοχή Όρων",
-            content: "Χρησιμοποιώντας το EuroDraft αποδέχεσαι πλήρως τους παρόντες όρους χρήσης. Αν δεν συμφωνείς, παρακαλούμε να μην χρησιμοποιείς την πλατφόρμα.",
+            content: "Χρησιμοποιώντας το CourtProphet αποδέχεσαι πλήρως τους παρόντες όρους χρήσης. Αν δεν συμφωνείς, παρακαλούμε να μην χρησιμοποιείς την πλατφόρμα.",
           },
           {
             title: "2. Περιγραφή Υπηρεσίας",
-            content: "Το EuroDraft είναι μια δωρεάν πλατφόρμα προβλέψεων για τα παιχνίδια της Euroleague. Δεν υπάρχει χρηματικό στοίχημα — οι πόντοι είναι αποκλειστικά για διασκέδαση και ανταγωνισμό.",
+            content: "Το CourtProphet είναι μια δωρεάν πλατφόρμα προβλέψεων για τα παιχνίδια της Euroleague. Δεν υπάρχει χρηματικό στοίχημα — οι πόντοι είναι αποκλειστικά για διασκέδαση και ανταγωνισμό.",
           },
           {
             title: "3. Εγγραφή Χρήστη",
@@ -38,11 +38,11 @@ export default function TermsPage() {
           },
           {
             title: "5. Πνευματικά Δικαιώματα",
-            content: "Το περιεχόμενο, το λογότυπο και ο σχεδιασμός του EuroDraft ανήκουν αποκλειστικά στους δημιουργούς. Απαγορεύεται η αναπαραγωγή χωρίς γραπτή άδεια.",
+            content: "Το περιεχόμενο, το λογότυπο και ο σχεδιασμός του CourtProphet ανήκουν αποκλειστικά στους δημιουργούς. Απαγορεύεται η αναπαραγωγή χωρίς γραπτή άδεια.",
           },
           {
             title: "6. Αποποίηση Ευθύνης",
-            content: "Το EuroDraft παρέχεται «ως έχει» χωρίς εγγυήσεις. Δεν φέρουμε ευθύνη για τυχόν διακοπές της υπηρεσίας ή απώλεια δεδομένων.",
+            content: "Το CourtProphet παρέχεται «ως έχει» χωρίς εγγυήσεις. Δεν φέρουμε ευθύνη για τυχόν διακοπές της υπηρεσίας ή απώλεια δεδομένων. Το CourtProphet δεν σχετίζεται με την EuroLeague Basketball ή οποιαδήποτε επίσημη αθλητική οργάνωση.",
           },
           {
             title: "7. Τροποποιήσεις",
@@ -50,7 +50,7 @@ export default function TermsPage() {
           },
           {
             title: "8. Επικοινωνία",
-            content: "Για ερωτήσεις σχετικά με τους όρους χρήσης, επικοινώνησε μαζί μας στο eurodraft.app@gmail.com.",
+            content: "Για ερωτήσεις σχετικά με τους όρους χρήσης, επικοινώνησε μαζί μας στο courtprophet@gmail.com.",
           },
         ].map((s, i) => (
           <div key={i} className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5 hover:border-[#2a2a2a] transition-all">
