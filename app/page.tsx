@@ -102,6 +102,37 @@ function AnimatedNumber({ value }: { value: number }) {
   return <>{display}</>;
 }
 
+function ChallengeWidget() {
+  const [challenge, setChallenge] = useState<{text: string; bonus: number} | null>(null);
+
+  useEffect(() => {
+    const fetchChallenge = async () => {
+      try {
+        const snap = await getDoc(doc(db, "config", "weeklyChallenge"));
+        if (snap.exists()) setChallenge(snap.data() as {text: string; bonus: number});
+      } catch (err) { console.error(err); }
+    };
+    fetchChallenge();
+  }, []);
+
+  if (!challenge || !challenge.text) return (
+    <div className="bg-gradient-to-br from-[rgba(255,117,31,0.08)] to-[rgba(255,117,31,0.02)] border border-[rgba(255,117,31,0.15)] rounded-xl p-4">
+      <div className="text-sm font-bold text-[#ff751f] mb-1.5">🏆 Σύντομα!</div>
+      <div className="text-xs text-gray-500 leading-relaxed">Εβδομαδιαία challenges με bonus πόντους για τους καλύτερους παίκτες.</div>
+    </div>
+  );
+
+  return (
+    <div className="bg-gradient-to-br from-[rgba(255,117,31,0.08)] to-transparent border border-[rgba(255,117,31,0.2)] rounded-xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm font-black text-[#ff751f]">🏆 Αυτή την εβδομάδα</div>
+        <span className="text-xs bg-[rgba(255,117,31,0.15)] text-[#ff751f] border border-[rgba(255,117,31,0.3)] px-2 py-0.5 rounded-full font-black">+{challenge.bonus} πτς</span>
+      </div>
+      <div className="text-xs text-gray-300 leading-relaxed">{challenge.text}</div>
+    </div>
+  );
+}
+
 export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
@@ -226,12 +257,10 @@ export default function Home() {
 
       {/* Hero */}
       <div className="relative overflow-hidden bg-[#080808]">
-        {/* Animated background */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#ff751f] opacity-[0.06] blur-[120px] rounded-full"></div>
           <div className="absolute top-[200px] left-[-100px] w-[400px] h-[400px] bg-[#ff751f] opacity-[0.03] blur-[100px] rounded-full"></div>
           <div className="absolute top-[100px] right-[-100px] w-[300px] h-[300px] bg-[#ff751f] opacity-[0.03] blur-[100px] rounded-full"></div>
-          {/* Grid pattern */}
           <div className="absolute inset-0 opacity-[0.03]" style={{
             backgroundImage: "linear-gradient(#ff751f 1px, transparent 1px), linear-gradient(90deg, #ff751f 1px, transparent 1px)",
             backgroundSize: "60px 60px"
@@ -265,7 +294,6 @@ export default function Home() {
             </a>
           </motion.div>
 
-          {/* Stats */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.4 }}
             className="flex gap-0 w-full max-w-sm md:max-w-none justify-center">
             <div className="pr-8 md:pr-12 mr-8 md:mr-12 border-r border-[#1a1a1a] text-center">
@@ -283,7 +311,6 @@ export default function Home() {
           </motion.div>
         </div>
 
-        {/* Bottom gradient */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#ff751f] to-transparent opacity-30"></div>
       </div>
 
@@ -364,7 +391,6 @@ export default function Home() {
                       : "bg-[#0f0f0f] border-[#1a1a1a] hover:border-[#2a2a2a]"
                   }`}
                 >
-                  {/* Header */}
                   <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500 bg-[#1a1a1a] px-2.5 py-1 rounded-lg">{formatGameDate(g.date)}</span>
@@ -388,7 +414,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Teams */}
                   <div className="flex items-center justify-center gap-3 mb-5">
                     <span className="text-base font-bold text-white">{g.homeTeam}</span>
                     <span className="text-xs text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">vs</span>
@@ -588,10 +613,7 @@ export default function Home() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}
           className="bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] p-5 hover:border-[#2a2a2a] transition-all">
           <div className="text-[10px] tracking-[3px] text-gray-600 font-medium uppercase mb-4">Εβδομαδιαίο Challenge</div>
-          <div className="bg-gradient-to-br from-[rgba(255,117,31,0.08)] to-[rgba(255,117,31,0.02)] border border-[rgba(255,117,31,0.15)] rounded-xl p-4">
-            <div className="text-sm font-bold text-[#ff751f] mb-1.5">🏆 Σύντομα!</div>
-            <div className="text-xs text-gray-500 leading-relaxed">Εβδομαδιαία challenges με bonus πόντους για τους καλύτερους παίκτες.</div>
-          </div>
+          <ChallengeWidget />
         </motion.div>
       </div>
     </main>
