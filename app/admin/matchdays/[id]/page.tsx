@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, orderBy, query, writeBatch } from "firebase/firestore";
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, orderBy, query, writeBatch, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { EUROLEAGUE_TEAMS } from "@/lib/teams";
 
@@ -101,6 +101,80 @@ export default function MatchdayDetailPage() {
     return { homePoints: Math.max(1, homePoints), awayPoints: Math.max(1, awayPoints) };
   };
 
+  // Ελέγχει αν όλα τα ματς έχουν αποτέλεσμα και εκτελεί τα bonus
+  const checkAndAwardBonuses = async (updatedGames: Game[]) => {
+    const allFinished = updatedGames.every(g =>
+      g.result !== null && g.handicapResult !== null && g.ouResult !== null
+    );
+    if (!allFinished) return;
+
+    // Έλεγξε αν τα bonus έχουν ήδη δοθεί
+    const matchdayDoc = await getDoc(doc(db, "matchdays", matchdayId));
+    if (matchdayDoc.data()?.bonusAwarded) return;
+
+    // Φόρτωσε challenge config
+    const challengeSnap = await getDoc(doc(db, "config", "weeklyChallenge"));
+    const challenge = challengeSnap.exists() ? challengeSnap.data() : null;
+
+    // Φόρτωσε όλες τις προβλέψεις για αυτή την αγωνιστική
+    const predictionsSnap = await getDocs(collection(db, "predictions"));
+    const batch = writeBatch(db);
+
+    for (const predDoc of predictionsSnap.docs) {
+      const predData = predDoc.data();
+      if (predData.matchdayId !== matchdayId) continue;
+
+      const picks = predData.picks || {};
+      let correctCount = 0;
+      let totalFinished = 0;
+
+      for (const game of updatedGames) {
+        // 1/2
+        if (picks[game.id] !== undefined) {
+          totalFinished++;
+          if (picks[game.id] === game.result) correctCount++;
+        }
+        // HCP
+        if (picks[game.id + "_hcp"] !== undefined) {
+          totalFinished++;
+          if (picks[game.id + "_hcp"] === game.handicapResult) correctCount++;
+        }
+        // O/U
+        if (picks[game.id + "_ou"] !== undefined) {
+          totalFinished++;
+          if (picks[game.id + "_ou"] === game.ouResult) correctCount++;
+        }
+      }
+
+      const userRef = doc(db, "users", predData.userId);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) continue;
+
+      let bonusPoints = 0;
+
+      // 100% accuracy bonus (+10)
+      if (totalFinished > 0 && correctCount === totalFinished) {
+        bonusPoints += 10;
+      }
+
+      // Custom challenge bonus
+      if (challenge && challenge.text && challenge.requiredCorrect) {
+        if (correctCount >= challenge.requiredCorrect) {
+          bonusPoints += challenge.bonus || 0;
+        }
+      }
+
+      if (bonusPoints > 0) {
+        batch.update(userRef, { points: (userSnap.data().points || 0) + bonusPoints });
+      }
+    }
+
+    await batch.commit();
+
+    // Σήμανε ότι τα bonus δόθηκαν
+    await updateDoc(doc(db, "matchdays", matchdayId), { bonusAwarded: true });
+  };
+
   const handleAddGame = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -193,13 +267,13 @@ export default function MatchdayDetailPage() {
       if (type === "result") updateData.status = "finished";
       await updateDoc(doc(db, "matchdays", matchdayId, "games", game.id), updateData);
 
+      // Grade predictions
       const predictionsSnap = await getDocs(collection(db, "predictions"));
       const batch = writeBatch(db);
 
       for (const predDoc of predictionsSnap.docs) {
         const predData = predDoc.data();
         if (predData.matchdayId !== matchdayId) continue;
-
         const pickKey = type === "result" ? game.id : type === "handicapResult" ? game.id + "_hcp" : game.id + "_ou";
         if (!predData.picks || !predData.picks[pickKey]) continue;
 
@@ -220,7 +294,15 @@ export default function MatchdayDetailPage() {
         }
       }
       await batch.commit();
-      fetchGames();
+
+      // Ανανέωσε τα games και έλεγξε για bonuses
+      const updatedGamesSnap = await getDocs(query(collection(db, "matchdays", matchdayId, "games"), orderBy("date", "asc")));
+      const updatedGames = updatedGamesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Game));
+      // Ενημέρωσε το τρέχον game με το νέο αποτέλεσμα
+      const finalGames = updatedGames.map(g => g.id === game.id ? { ...g, [type]: value, status: type === "result" ? "finished" : g.status } : g);
+      setGames(finalGames);
+      await checkAndAwardBonuses(finalGames);
+
     } catch (err) { console.error(err); alert("Κάτι πήγε στραβά."); }
     finally { setGrading(null); }
   };
@@ -232,16 +314,17 @@ export default function MatchdayDetailPage() {
   };
 
   const points = homeOdds && awayOdds ? calcPoints(parseFloat(homeOdds), parseFloat(awayOdds)) : null;
+  const allFinished = games.length > 0 && games.every(g => g.result !== null && g.handicapResult !== null && g.ouResult !== null);
 
-  if (loading) return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">Φόρτωση...</div>;
+  if (loading) return <div className="min-h-screen bg-[#080808] flex items-center justify-center text-white">Φόρτωση...</div>;
   if (!user || user.email !== ADMIN_EMAIL) return null;
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white">
+    <main className="min-h-screen bg-[#080808] text-white">
       <nav className="bg-black border-b border-[#1a1a1a] h-16 flex items-center px-10 gap-4">
         <a href="/" className="font-bold text-2xl tracking-widest">
-          <span className="text-[#ff751f]">EURO</span>
-          <span className="text-white">DRAFT</span>
+          <span className="text-[#ff751f]">COURT</span>
+          <span className="text-white">PROPHET</span>
         </a>
         <span className="text-xs text-gray-500 border border-[#333] px-2 py-1 rounded">ADMIN</span>
         <a href="/admin/matchdays" className="text-xs text-gray-500 hover:text-white ml-4">← Πίσω</a>
@@ -250,18 +333,23 @@ export default function MatchdayDetailPage() {
       <div className="max-w-2xl mx-auto px-10 py-12">
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-2xl font-medium">Αγωνιστική #{matchday?.number}</h1>
+            <h1 className="text-2xl font-black">Αγωνιστική #{matchday?.number}</h1>
             <p className="text-xs text-gray-500 mt-1">Deadline: {formatDate(matchday?.deadline)}</p>
+            {allFinished && (
+              <div className="mt-2 flex items-center gap-2 text-xs text-green-400 bg-green-900/30 border border-green-900 px-3 py-1.5 rounded-lg">
+                ✓ Όλα τα αποτελέσματα έχουν καταχωρηθεί — τα bonus δόθηκαν αυτόματα!
+              </div>
+            )}
           </div>
           <button onClick={() => setShowForm(!showForm)}
-            className="bg-[#ff751f] text-black font-medium px-5 py-2.5 rounded-lg text-sm hover:bg-[#e6671a]">
+            className="bg-[#ff751f] text-black font-black px-5 py-2.5 rounded-xl text-sm hover:bg-[#e6671a]">
             + Πρόσθεσε ματς
           </button>
         </div>
 
         {showForm && (
-          <div className="bg-[#111] border border-[#ff751f] rounded-xl p-6 mb-6">
-            <h2 className="text-base font-medium mb-4">Νέο ματς</h2>
+          <div className="bg-[#0f0f0f] border border-[#ff751f]/30 rounded-2xl p-6 mb-6">
+            <h2 className="text-base font-black mb-4">Νέο ματς</h2>
             <form onSubmit={handleAddGame} className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -288,7 +376,6 @@ export default function MatchdayDetailPage() {
                   className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]" required />
               </div>
 
-              {/* 1/2 */}
               <div className="border border-[#2a2a2a] rounded-lg p-4">
                 <div className="text-xs text-[#ff751f] font-medium mb-3">1 / 2 — Νικητής</div>
                 <div className="grid grid-cols-2 gap-3">
@@ -312,7 +399,6 @@ export default function MatchdayDetailPage() {
                 )}
               </div>
 
-              {/* Handicap */}
               <div className="border border-[#2a2a2a] rounded-lg p-4">
                 <div className="text-xs text-[#ff751f] font-medium mb-3">Handicap</div>
                 <div className="grid grid-cols-3 gap-3">
@@ -337,7 +423,6 @@ export default function MatchdayDetailPage() {
                 </div>
               </div>
 
-              {/* Over/Under */}
               <div className="border border-[#2a2a2a] rounded-lg p-4">
                 <div className="text-xs text-[#ff751f] font-medium mb-3">Over / Under</div>
                 <div className="grid grid-cols-3 gap-3">
@@ -364,11 +449,11 @@ export default function MatchdayDetailPage() {
 
               <div className="flex gap-3">
                 <button type="submit" disabled={saving}
-                  className="bg-[#ff751f] text-black font-medium px-6 py-2.5 rounded-lg text-sm hover:bg-[#e6671a] disabled:opacity-50">
+                  className="bg-[#ff751f] text-black font-black px-6 py-2.5 rounded-xl text-sm hover:bg-[#e6671a] disabled:opacity-50">
                   {saving ? "Αποθήκευση..." : "Πρόσθεσε"}
                 </button>
                 <button type="button" onClick={() => setShowForm(false)}
-                  className="border border-[#333] text-gray-400 px-4 py-2.5 rounded-lg text-sm hover:bg-[#1a1a1a]">
+                  className="border border-[#333] text-gray-400 px-4 py-2.5 rounded-xl text-sm hover:bg-[#1a1a1a]">
                   Ακύρωση
                 </button>
               </div>
@@ -377,24 +462,24 @@ export default function MatchdayDetailPage() {
         )}
 
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-medium text-gray-400">Ματς ({games.length})</h2>
+          <h2 className="text-base font-black text-gray-400">Ματς ({games.length})</h2>
           {games.length === 0 && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-8 text-center text-gray-500 text-sm">
+            <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-8 text-center text-gray-500 text-sm">
               Δεν υπάρχουν ματς ακόμα.
             </div>
           )}
           {games.map((g) => (
-            <div key={g.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-6 py-4">
+            <div key={g.id} className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl px-6 py-4">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <div className="font-medium text-white">{g.homeTeam} vs {g.awayTeam}</div>
+                  <div className="font-black text-white">{g.homeTeam} vs {g.awayTeam}</div>
                   <div className="text-xs text-gray-500 mt-1">{formatDate(g.date)}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs px-2 py-1 rounded font-medium ${
+                  <span className={`text-xs px-2 py-1 rounded-lg font-bold ${
                     g.status === "pending" ? "bg-[#222] text-gray-400" :
                     g.status === "live" ? "bg-[#ff751f] text-black" :
-                    "bg-green-900 text-green-400"
+                    "bg-green-900/50 text-green-400"
                   }`}>
                     {g.status === "pending" ? "Αναμονή" : g.status === "live" ? "LIVE" : "Τελικό"}
                   </span>
@@ -416,11 +501,11 @@ export default function MatchdayDetailPage() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleSetResult(g, "result", "home")} disabled={grading === g.id + "result"}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.result === "home" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.result === "home" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
                     {g.homeTeam}
                   </button>
                   <button onClick={() => handleSetResult(g, "result", "away")} disabled={grading === g.id + "result"}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.result === "away" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.result === "away" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
                     {g.awayTeam}
                   </button>
                 </div>
@@ -434,11 +519,11 @@ export default function MatchdayDetailPage() {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => handleSetResult(g, "handicapResult", "home")} disabled={grading === g.id + "handicapResult"}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.handicapResult === "home" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.handicapResult === "home" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
                       {g.homeTeam} {g.handicapLine > 0 ? "+" : ""}{g.handicapLine}
                     </button>
                     <button onClick={() => handleSetResult(g, "handicapResult", "away")} disabled={grading === g.id + "handicapResult"}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.handicapResult === "away" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.handicapResult === "away" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
                       {g.awayTeam} {g.handicapLine > 0 ? "-" : "+"}{Math.abs(g.handicapLine)}
                     </button>
                   </div>
@@ -453,11 +538,11 @@ export default function MatchdayDetailPage() {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => handleSetResult(g, "ouResult", "over")} disabled={grading === g.id + "ouResult"}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.ouResult === "over" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.ouResult === "over" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
                       Over {g.ouLine}
                     </button>
                     <button onClick={() => handleSetResult(g, "ouResult", "under")} disabled={grading === g.id + "ouResult"}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${g.ouResult === "under" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.ouResult === "under" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
                       Under {g.ouLine}
                     </button>
                   </div>
