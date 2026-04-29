@@ -3,11 +3,29 @@
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, orderBy, query, writeBatch, setDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, orderBy, query, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { EUROLEAGUE_TEAMS } from "@/lib/teams";
 
 const ADMIN_EMAIL = "georgelipas05@gmail.com";
+
+interface HCPLine {
+  line: number;
+  homeOdds: number;
+  awayOdds: number;
+  homePoints: number;
+  awayPoints: number;
+  result: string | null;
+}
+
+interface OULine {
+  line: number;
+  overOdds: number;
+  underOdds: number;
+  overPoints: number;
+  underPoints: number;
+  result: string | null;
+}
 
 interface Game {
   id: string;
@@ -18,34 +36,10 @@ interface Game {
   awayOdds: number;
   homePoints: number;
   awayPoints: number;
-  handicapLine: number;
-  handicapHomeOdds: number;
-  handicapAwayOdds: number;
-  handicapHomePoints: number;
-  handicapAwayPoints: number;
-  ouLine: number;
-  overOdds: number;
-  underOdds: number;
-  overPoints: number;
-  underPoints: number;
+  handicapLines: HCPLine[];
+  ouLines: OULine[];
   status: string;
   result: string | null;
-  handicapResult: string | null;
-  ouResult: string | null;
-}
-
-interface EditState {
-  homeTeam: string;
-  awayTeam: string;
-  date: string;
-  homeOdds: string;
-  awayOdds: string;
-  handicapLine: string;
-  handicapHomeOdds: string;
-  handicapAwayOdds: string;
-  ouLine: string;
-  overOdds: string;
-  underOdds: string;
 }
 
 export default function MatchdayDetailPage() {
@@ -56,23 +50,26 @@ export default function MatchdayDetailPage() {
 
   const [matchday, setMatchday] = useState<{number: number, deadline: any} | null>(null);
   const [games, setGames] = useState<Game[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [grading, setGrading] = useState<string | null>(null);
+
+  // New game form
   const [homeTeam, setHomeTeam] = useState("");
   const [awayTeam, setAwayTeam] = useState("");
   const [date, setDate] = useState("");
   const [homeOdds, setHomeOdds] = useState("");
   const [awayOdds, setAwayOdds] = useState("");
-  const [handicapLine, setHandicapLine] = useState("");
-  const [handicapHomeOdds, setHandicapHomeOdds] = useState("");
-  const [handicapAwayOdds, setHandicapAwayOdds] = useState("");
-  const [ouLine, setOuLine] = useState("");
-  const [overOdds, setOverOdds] = useState("");
-  const [underOdds, setUnderOdds] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [grading, setGrading] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editState, setEditState] = useState<EditState | null>(null);
-  const [editSaving, setEditSaving] = useState(false);
+
+  // HCP lines
+  const [hcpLines, setHcpLines] = useState<{line: string, homeOdds: string, awayOdds: string}[]>([
+    { line: "", homeOdds: "", awayOdds: "" }
+  ]);
+
+  // OU lines
+  const [ouLines, setOuLines] = useState<{line: string, overOdds: string, underOdds: string}[]>([
+    { line: "", overOdds: "", underOdds: "" }
+  ]);
 
   useEffect(() => {
     if (!loading && (!user || user.email !== ADMIN_EMAIL)) router.push("/");
@@ -96,83 +93,9 @@ export default function MatchdayDetailPage() {
   const calcPoints = (h: number, a: number) => {
     const total = 1 / h + 1 / a;
     const homeProb = (1 / h) / total;
-    const homePoints = Math.round(homeProb * 10);
-    const awayPoints = 10 - homePoints;
-    return { homePoints: Math.max(1, homePoints), awayPoints: Math.max(1, awayPoints) };
-  };
-
-  // Ελέγχει αν όλα τα ματς έχουν αποτέλεσμα και εκτελεί τα bonus
-  const checkAndAwardBonuses = async (updatedGames: Game[]) => {
-    const allFinished = updatedGames.every(g =>
-      g.result !== null && g.handicapResult !== null && g.ouResult !== null
-    );
-    if (!allFinished) return;
-
-    // Έλεγξε αν τα bonus έχουν ήδη δοθεί
-    const matchdayDoc = await getDoc(doc(db, "matchdays", matchdayId));
-    if (matchdayDoc.data()?.bonusAwarded) return;
-
-    // Φόρτωσε challenge config
-    const challengeSnap = await getDoc(doc(db, "config", "weeklyChallenge"));
-    const challenge = challengeSnap.exists() ? challengeSnap.data() : null;
-
-    // Φόρτωσε όλες τις προβλέψεις για αυτή την αγωνιστική
-    const predictionsSnap = await getDocs(collection(db, "predictions"));
-    const batch = writeBatch(db);
-
-    for (const predDoc of predictionsSnap.docs) {
-      const predData = predDoc.data();
-      if (predData.matchdayId !== matchdayId) continue;
-
-      const picks = predData.picks || {};
-      let correctCount = 0;
-      let totalFinished = 0;
-
-      for (const game of updatedGames) {
-        // 1/2
-        if (picks[game.id] !== undefined) {
-          totalFinished++;
-          if (picks[game.id] === game.result) correctCount++;
-        }
-        // HCP
-        if (picks[game.id + "_hcp"] !== undefined) {
-          totalFinished++;
-          if (picks[game.id + "_hcp"] === game.handicapResult) correctCount++;
-        }
-        // O/U
-        if (picks[game.id + "_ou"] !== undefined) {
-          totalFinished++;
-          if (picks[game.id + "_ou"] === game.ouResult) correctCount++;
-        }
-      }
-
-      const userRef = doc(db, "users", predData.userId);
-      const userSnap = await getDoc(userRef);
-      if (!userSnap.exists()) continue;
-
-      let bonusPoints = 0;
-
-      // 100% accuracy bonus (+10)
-      if (totalFinished > 0 && correctCount === totalFinished) {
-        bonusPoints += 10;
-      }
-
-      // Custom challenge bonus
-      if (challenge && challenge.text && challenge.requiredCorrect) {
-        if (correctCount >= challenge.requiredCorrect) {
-          bonusPoints += challenge.bonus || 0;
-        }
-      }
-
-      if (bonusPoints > 0) {
-        batch.update(userRef, { points: (userSnap.data().points || 0) + bonusPoints });
-      }
-    }
-
-    await batch.commit();
-
-    // Σήμανε ότι τα bonus δόθηκαν
-    await updateDoc(doc(db, "matchdays", matchdayId), { bonusAwarded: true });
+    const hp = Math.round(homeProb * 10);
+    const ap = 10 - hp;
+    return { homePoints: Math.max(1, hp), awayPoints: Math.max(1, ap) };
   };
 
   const handleAddGame = async (e: React.FormEvent) => {
@@ -180,75 +103,55 @@ export default function MatchdayDetailPage() {
     setSaving(true);
     try {
       const { homePoints, awayPoints } = calcPoints(parseFloat(homeOdds), parseFloat(awayOdds));
-      const hcp = calcPoints(parseFloat(handicapHomeOdds), parseFloat(handicapAwayOdds));
-      const ou = calcPoints(parseFloat(overOdds), parseFloat(underOdds));
+
+      const handicapLines = hcpLines
+        .filter(l => l.line && l.homeOdds && l.awayOdds)
+        .map(l => {
+          const pts = calcPoints(parseFloat(l.homeOdds), parseFloat(l.awayOdds));
+          return {
+            line: parseFloat(l.line),
+            homeOdds: parseFloat(l.homeOdds),
+            awayOdds: parseFloat(l.awayOdds),
+            homePoints: pts.homePoints,
+            awayPoints: pts.awayPoints,
+            result: null,
+          };
+        });
+
+      const ouLinesData = ouLines
+        .filter(l => l.line && l.overOdds && l.underOdds)
+        .map(l => {
+          const pts = calcPoints(parseFloat(l.overOdds), parseFloat(l.underOdds));
+          return {
+            line: parseFloat(l.line),
+            overOdds: parseFloat(l.overOdds),
+            underOdds: parseFloat(l.underOdds),
+            overPoints: pts.homePoints,
+            underPoints: pts.awayPoints,
+            result: null,
+          };
+        });
 
       await addDoc(collection(db, "matchdays", matchdayId, "games"), {
         homeTeam, awayTeam, date: new Date(date),
         homeOdds: parseFloat(homeOdds), awayOdds: parseFloat(awayOdds),
         homePoints, awayPoints,
-        handicapLine: parseFloat(handicapLine),
-        handicapHomeOdds: parseFloat(handicapHomeOdds),
-        handicapAwayOdds: parseFloat(handicapAwayOdds),
-        handicapHomePoints: hcp.homePoints,
-        handicapAwayPoints: hcp.awayPoints,
-        ouLine: parseFloat(ouLine),
-        overOdds: parseFloat(overOdds),
-        underOdds: parseFloat(underOdds),
-        overPoints: ou.homePoints,
-        underPoints: ou.awayPoints,
+        handicapLines,
+        ouLines: ouLinesData,
         status: "pending",
         result: null,
-        handicapResult: null,
-        ouResult: null,
         createdAt: new Date(),
       });
+
+      // Reset
       setHomeTeam(""); setAwayTeam(""); setDate("");
       setHomeOdds(""); setAwayOdds("");
-      setHandicapLine(""); setHandicapHomeOdds(""); setHandicapAwayOdds("");
-      setOuLine(""); setOverOdds(""); setUnderOdds("");
+      setHcpLines([{ line: "", homeOdds: "", awayOdds: "" }]);
+      setOuLines([{ line: "", overOdds: "", underOdds: "" }]);
       setShowForm(false);
       fetchGames();
     } catch (err) { console.error(err); }
     finally { setSaving(false); }
-  };
-
-  const startEdit = (g: Game) => {
-    setEditingId(g.id);
-    const d = g.date.toDate ? g.date.toDate() : new Date(g.date);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const localDate = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    setEditState({
-      homeTeam: g.homeTeam, awayTeam: g.awayTeam, date: localDate,
-      homeOdds: String(g.homeOdds || ""), awayOdds: String(g.awayOdds || ""),
-      handicapLine: String(g.handicapLine || ""), handicapHomeOdds: String(g.handicapHomeOdds || ""), handicapAwayOdds: String(g.handicapAwayOdds || ""),
-      ouLine: String(g.ouLine || ""), overOdds: String(g.overOdds || ""), underOdds: String(g.underOdds || ""),
-    });
-  };
-
-  const handleEditSave = async (gameId: string) => {
-    if (!editState) return;
-    setEditSaving(true);
-    try {
-      const { homePoints, awayPoints } = calcPoints(parseFloat(editState.homeOdds), parseFloat(editState.awayOdds));
-      const hcp = calcPoints(parseFloat(editState.handicapHomeOdds), parseFloat(editState.handicapAwayOdds));
-      const ou = calcPoints(parseFloat(editState.overOdds), parseFloat(editState.underOdds));
-      await updateDoc(doc(db, "matchdays", matchdayId, "games", gameId), {
-        homeTeam: editState.homeTeam, awayTeam: editState.awayTeam, date: new Date(editState.date),
-        homeOdds: parseFloat(editState.homeOdds), awayOdds: parseFloat(editState.awayOdds),
-        homePoints, awayPoints,
-        handicapLine: parseFloat(editState.handicapLine),
-        handicapHomeOdds: parseFloat(editState.handicapHomeOdds),
-        handicapAwayOdds: parseFloat(editState.handicapAwayOdds),
-        handicapHomePoints: hcp.homePoints, handicapAwayPoints: hcp.awayPoints,
-        ouLine: parseFloat(editState.ouLine),
-        overOdds: parseFloat(editState.overOdds), underOdds: parseFloat(editState.underOdds),
-        overPoints: ou.homePoints, underPoints: ou.awayPoints,
-      });
-      setEditingId(null); setEditState(null);
-      fetchGames();
-    } catch (err) { console.error(err); }
-    finally { setEditSaving(false); }
   };
 
   const handleDelete = async (gameId: string) => {
@@ -259,33 +162,25 @@ export default function MatchdayDetailPage() {
     } catch (err) { console.error(err); }
   };
 
-  const handleSetResult = async (game: Game, type: "result" | "handicapResult" | "ouResult", value: string) => {
+  const handleSetResult = async (game: Game, value: string) => {
     if (!confirm("Σίγουρα; Αυτό θα ενημερώσει τους πόντους όλων των παικτών.")) return;
-    setGrading(game.id + type);
+    setGrading(game.id + "result");
     try {
-      const updateData: any = { [type]: value };
-      if (type === "result") updateData.status = "finished";
-      await updateDoc(doc(db, "matchdays", matchdayId, "games", game.id), updateData);
+      await updateDoc(doc(db, "matchdays", matchdayId, "games", game.id), {
+        result: value, status: "finished"
+      });
 
-      // Grade predictions
       const predictionsSnap = await getDocs(collection(db, "predictions"));
       const batch = writeBatch(db);
 
       for (const predDoc of predictionsSnap.docs) {
         const predData = predDoc.data();
         if (predData.matchdayId !== matchdayId) continue;
-        const pickKey = type === "result" ? game.id : type === "handicapResult" ? game.id + "_hcp" : game.id + "_ou";
-        if (!predData.picks || !predData.picks[pickKey]) continue;
+        const picks = predData.picks || {};
+        if (!picks[game.id]) continue;
 
-        const userPick = predData.picks[pickKey];
-        const isCorrect = userPick === value;
-        let pointsEarned = -1;
-
-        if (isCorrect) {
-          if (type === "result") pointsEarned = value === "home" ? game.homePoints : game.awayPoints;
-          else if (type === "handicapResult") pointsEarned = value === "home" ? game.handicapHomePoints : game.handicapAwayPoints;
-          else pointsEarned = value === "over" ? game.overPoints : game.underPoints;
-        }
+        const isCorrect = picks[game.id] === value;
+        const pointsEarned = isCorrect ? (value === "home" ? game.homePoints : game.awayPoints) : -1;
 
         const userRef = doc(db, "users", predData.userId);
         const userSnap = await getDoc(userRef);
@@ -294,16 +189,88 @@ export default function MatchdayDetailPage() {
         }
       }
       await batch.commit();
+      fetchGames();
+    } catch (err) { console.error(err); }
+    finally { setGrading(null); }
+  };
 
-      // Ανανέωσε τα games και έλεγξε για bonuses
-      const updatedGamesSnap = await getDocs(query(collection(db, "matchdays", matchdayId, "games"), orderBy("date", "asc")));
-      const updatedGames = updatedGamesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Game));
-      // Ενημέρωσε το τρέχον game με το νέο αποτέλεσμα
-      const finalGames = updatedGames.map(g => g.id === game.id ? { ...g, [type]: value, status: type === "result" ? "finished" : g.status } : g);
-      setGames(finalGames);
-      await checkAndAwardBonuses(finalGames);
+  const handleSetHCPResult = async (game: Game, lineIndex: number, value: string) => {
+    if (!confirm("Σίγουρα;")) return;
+    const key = `${game.id}_hcp_${lineIndex}`;
+    setGrading(key);
+    try {
+      const updatedLines = game.handicapLines.map((l, i) =>
+        i === lineIndex ? { ...l, result: value } : l
+      );
+      await updateDoc(doc(db, "matchdays", matchdayId, "games", game.id), {
+        handicapLines: updatedLines
+      });
 
-    } catch (err) { console.error(err); alert("Κάτι πήγε στραβά."); }
+      const predictionsSnap = await getDocs(collection(db, "predictions"));
+      const batch = writeBatch(db);
+      const line = game.handicapLines[lineIndex];
+
+      for (const predDoc of predictionsSnap.docs) {
+        const predData = predDoc.data();
+        if (predData.matchdayId !== matchdayId) continue;
+        const picks = predData.picks || {};
+        const pickKey = `${game.id}_hcp_${lineIndex}`;
+        if (!picks[pickKey]) continue;
+
+        const isCorrect = picks[pickKey] === value;
+        const pointsEarned = isCorrect
+          ? (value === "home" ? line.homePoints : line.awayPoints)
+          : -1;
+
+        const userRef = doc(db, "users", predData.userId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          batch.update(userRef, { points: (userSnap.data().points || 0) + pointsEarned });
+        }
+      }
+      await batch.commit();
+      fetchGames();
+    } catch (err) { console.error(err); }
+    finally { setGrading(null); }
+  };
+
+  const handleSetOUResult = async (game: Game, lineIndex: number, value: string) => {
+    if (!confirm("Σίγουρα;")) return;
+    const key = `${game.id}_ou_${lineIndex}`;
+    setGrading(key);
+    try {
+      const updatedLines = game.ouLines.map((l, i) =>
+        i === lineIndex ? { ...l, result: value } : l
+      );
+      await updateDoc(doc(db, "matchdays", matchdayId, "games", game.id), {
+        ouLines: updatedLines
+      });
+
+      const predictionsSnap = await getDocs(collection(db, "predictions"));
+      const batch = writeBatch(db);
+      const line = game.ouLines[lineIndex];
+
+      for (const predDoc of predictionsSnap.docs) {
+        const predData = predDoc.data();
+        if (predData.matchdayId !== matchdayId) continue;
+        const picks = predData.picks || {};
+        const pickKey = `${game.id}_ou_${lineIndex}`;
+        if (!picks[pickKey]) continue;
+
+        const isCorrect = picks[pickKey] === value;
+        const pointsEarned = isCorrect
+          ? (value === "over" ? line.overPoints : line.underPoints)
+          : -1;
+
+        const userRef = doc(db, "users", predData.userId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          batch.update(userRef, { points: (userSnap.data().points || 0) + pointsEarned });
+        }
+      }
+      await batch.commit();
+      fetchGames();
+    } catch (err) { console.error(err); }
     finally { setGrading(null); }
   };
 
@@ -314,7 +281,6 @@ export default function MatchdayDetailPage() {
   };
 
   const points = homeOdds && awayOdds ? calcPoints(parseFloat(homeOdds), parseFloat(awayOdds)) : null;
-  const allFinished = games.length > 0 && games.every(g => g.result !== null && g.handicapResult !== null && g.ouResult !== null);
 
   if (loading) return <div className="min-h-screen bg-[#080808] flex items-center justify-center text-white">Φόρτωση...</div>;
   if (!user || user.email !== ADMIN_EMAIL) return null;
@@ -335,11 +301,6 @@ export default function MatchdayDetailPage() {
           <div>
             <h1 className="text-2xl font-black">Αγωνιστική #{matchday?.number}</h1>
             <p className="text-xs text-gray-500 mt-1">Deadline: {formatDate(matchday?.deadline)}</p>
-            {allFinished && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-green-400 bg-green-900/30 border border-green-900 px-3 py-1.5 rounded-lg">
-                ✓ Όλα τα αποτελέσματα έχουν καταχωρηθεί — τα bonus δόθηκαν αυτόματα!
-              </div>
-            )}
           </div>
           <button onClick={() => setShowForm(!showForm)}
             className="bg-[#ff751f] text-black font-black px-5 py-2.5 rounded-xl text-sm hover:bg-[#e6671a]">
@@ -351,12 +312,13 @@ export default function MatchdayDetailPage() {
           <div className="bg-[#0f0f0f] border border-[#ff751f]/30 rounded-2xl p-6 mb-6">
             <h2 className="text-base font-black mb-4">Νέο ματς</h2>
             <form onSubmit={handleAddGame} className="flex flex-col gap-4">
+              {/* Teams */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-gray-500 mb-1.5 block">Γηπεδούχος</label>
                   <select value={homeTeam} onChange={(e) => setHomeTeam(e.target.value)}
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]" required>
-                    <option value="">Επέλεξε ομάδα...</option>
+                    <option value="">Επέλεξε...</option>
                     {EUROLEAGUE_TEAMS.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                   </select>
                 </div>
@@ -364,87 +326,120 @@ export default function MatchdayDetailPage() {
                   <label className="text-xs text-gray-500 mb-1.5 block">Φιλοξενούμενος</label>
                   <select value={awayTeam} onChange={(e) => setAwayTeam(e.target.value)}
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]" required>
-                    <option value="">Επέλεξε ομάδα...</option>
+                    <option value="">Επέλεξε...</option>
                     {EUROLEAGUE_TEAMS.filter(t => t.name !== homeTeam).map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs text-gray-500 mb-1.5 block">Ημερομηνία και ώρα</label>
+                <label className="text-xs text-gray-500 mb-1.5 block">Ημερομηνία</label>
                 <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)}
                   className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]" required />
               </div>
 
-              <div className="border border-[#2a2a2a] rounded-lg p-4">
-                <div className="text-xs text-[#ff751f] font-medium mb-3">1 / 2 — Νικητής</div>
+              {/* 1/2 */}
+              <div className="border border-[#2a2a2a] rounded-xl p-4">
+                <div className="text-xs text-[#ff751f] font-black mb-3">1/2 — Νικητής</div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση {homeTeam || "γηπεδούχου"}</label>
+                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση {homeTeam || "γηπ."}</label>
                     <input type="number" step="0.01" value={homeOdds} onChange={(e) => setHomeOdds(e.target.value)}
                       className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                      placeholder="π.χ. 1.40" required />
+                      placeholder="1.40" required />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση {awayTeam || "φιλοξενούμενου"}</label>
+                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση {awayTeam || "φιλ."}</label>
                     <input type="number" step="0.01" value={awayOdds} onChange={(e) => setAwayOdds(e.target.value)}
                       className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                      placeholder="π.χ. 3.20" required />
+                      placeholder="3.20" required />
                   </div>
                 </div>
                 {points && (
                   <div className="mt-2 text-xs text-gray-500">
-                    Πόντοι: {homeTeam || "Γηπεδούχος"} <span className="text-[#ff751f]">+{points.homePoints}</span> · {awayTeam || "Φιλοξενούμενος"} <span className="text-[#ff751f]">+{points.awayPoints}</span>
+                    {homeTeam || "Γηπ."} <span className="text-[#ff751f]">+{points.homePoints}</span> · {awayTeam || "Φιλ."} <span className="text-[#ff751f]">+{points.awayPoints}</span>
                   </div>
                 )}
               </div>
 
-              <div className="border border-[#2a2a2a] rounded-lg p-4">
-                <div className="text-xs text-[#ff751f] font-medium mb-3">Handicap</div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Line (π.χ. -5.5)</label>
-                    <input type="number" step="0.5" value={handicapLine} onChange={(e) => setHandicapLine(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                      placeholder="-5.5" required />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση {homeTeam || "γηπ."}</label>
-                    <input type="number" step="0.01" value={handicapHomeOdds} onChange={(e) => setHandicapHomeOdds(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                      placeholder="1.85" required />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση {awayTeam || "φιλ."}</label>
-                    <input type="number" step="0.01" value={handicapAwayOdds} onChange={(e) => setHandicapAwayOdds(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                      placeholder="1.85" required />
-                  </div>
+              {/* HCP Lines */}
+              <div className="border border-[#2a2a2a] rounded-xl p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="text-xs text-blue-400 font-black">HANDICAP LINES</div>
+                  <button type="button" onClick={() => setHcpLines([...hcpLines, { line: "", homeOdds: "", awayOdds: "" }])}
+                    className="text-xs text-[#ff751f] border border-[rgba(255,117,31,0.3)] px-2.5 py-1 rounded-lg hover:bg-[rgba(255,117,31,0.1)]">
+                    + Line
+                  </button>
                 </div>
+                {hcpLines.map((l, i) => (
+                  <div key={i} className="flex gap-2 mb-2 items-end">
+                    <div className="flex-1">
+                      {i === 0 && <label className="text-xs text-gray-600 mb-1 block">Line</label>}
+                      <input type="number" step="0.5" value={l.line} onChange={(e) => {
+                        const updated = [...hcpLines]; updated[i].line = e.target.value; setHcpLines(updated);
+                      }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                        placeholder="-9.5" />
+                    </div>
+                    <div className="flex-1">
+                      {i === 0 && <label className="text-xs text-gray-600 mb-1 block">Απόδ. {homeTeam || "Γηπ."}</label>}
+                      <input type="number" step="0.01" value={l.homeOdds} onChange={(e) => {
+                        const updated = [...hcpLines]; updated[i].homeOdds = e.target.value; setHcpLines(updated);
+                      }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                        placeholder="1.85" />
+                    </div>
+                    <div className="flex-1">
+                      {i === 0 && <label className="text-xs text-gray-600 mb-1 block">Απόδ. {awayTeam || "Φιλ."}</label>}
+                      <input type="number" step="0.01" value={l.awayOdds} onChange={(e) => {
+                        const updated = [...hcpLines]; updated[i].awayOdds = e.target.value; setHcpLines(updated);
+                      }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                        placeholder="1.85" />
+                    </div>
+                    {hcpLines.length > 1 && (
+                      <button type="button" onClick={() => setHcpLines(hcpLines.filter((_, j) => j !== i))}
+                        className="text-red-400 text-xs px-2 py-2 border border-[#333] rounded-lg hover:border-red-500">✕</button>
+                    )}
+                  </div>
+                ))}
               </div>
 
-              <div className="border border-[#2a2a2a] rounded-lg p-4">
-                <div className="text-xs text-[#ff751f] font-medium mb-3">Over / Under</div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Line (π.χ. 160.5)</label>
-                    <input type="number" step="0.5" value={ouLine} onChange={(e) => setOuLine(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                      placeholder="160.5" required />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση Over</label>
-                    <input type="number" step="0.01" value={overOdds} onChange={(e) => setOverOdds(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                      placeholder="1.85" required />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Απόδοση Under</label>
-                    <input type="number" step="0.01" value={underOdds} onChange={(e) => setUnderOdds(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                      placeholder="1.85" required />
-                  </div>
+              {/* OU Lines */}
+              <div className="border border-[#2a2a2a] rounded-xl p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="text-xs text-green-400 font-black">OVER/UNDER LINES</div>
+                  <button type="button" onClick={() => setOuLines([...ouLines, { line: "", overOdds: "", underOdds: "" }])}
+                    className="text-xs text-[#ff751f] border border-[rgba(255,117,31,0.3)] px-2.5 py-1 rounded-lg hover:bg-[rgba(255,117,31,0.1)]">
+                    + Line
+                  </button>
                 </div>
+                {ouLines.map((l, i) => (
+                  <div key={i} className="flex gap-2 mb-2 items-end">
+                    <div className="flex-1">
+                      {i === 0 && <label className="text-xs text-gray-600 mb-1 block">Line</label>}
+                      <input type="number" step="0.5" value={l.line} onChange={(e) => {
+                        const updated = [...ouLines]; updated[i].line = e.target.value; setOuLines(updated);
+                      }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                        placeholder="160.5" />
+                    </div>
+                    <div className="flex-1">
+                      {i === 0 && <label className="text-xs text-gray-600 mb-1 block">Απόδ. Over</label>}
+                      <input type="number" step="0.01" value={l.overOdds} onChange={(e) => {
+                        const updated = [...ouLines]; updated[i].overOdds = e.target.value; setOuLines(updated);
+                      }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                        placeholder="1.85" />
+                    </div>
+                    <div className="flex-1">
+                      {i === 0 && <label className="text-xs text-gray-600 mb-1 block">Απόδ. Under</label>}
+                      <input type="number" step="0.01" value={l.underOdds} onChange={(e) => {
+                        const updated = [...ouLines]; updated[i].underOdds = e.target.value; setOuLines(updated);
+                      }} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]"
+                        placeholder="1.85" />
+                    </div>
+                    {ouLines.length > 1 && (
+                      <button type="button" onClick={() => setOuLines(ouLines.filter((_, j) => j !== i))}
+                        className="text-red-400 text-xs px-2 py-2 border border-[#333] rounded-lg hover:border-red-500">✕</button>
+                    )}
+                  </div>
+                ))}
               </div>
 
               <div className="flex gap-3">
@@ -483,10 +478,6 @@ export default function MatchdayDetailPage() {
                   }`}>
                     {g.status === "pending" ? "Αναμονή" : g.status === "live" ? "LIVE" : "Τελικό"}
                   </span>
-                  <button onClick={() => startEdit(g)}
-                    className="text-xs border border-[#333] text-gray-400 px-2.5 py-1 rounded-lg hover:border-[#ff751f] hover:text-[#ff751f] transition-colors">
-                    Επεξεργασία
-                  </button>
                   <button onClick={() => handleDelete(g.id)}
                     className="text-xs border border-[#333] text-gray-600 px-2.5 py-1 rounded-lg hover:border-red-500 hover:text-red-400 transition-colors">
                     ✕
@@ -500,54 +491,54 @@ export default function MatchdayDetailPage() {
                   1/2 {g.result ? "→ " + (g.result === "home" ? g.homeTeam : g.awayTeam) : "(αποτέλεσμα;)"}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleSetResult(g, "result", "home")} disabled={grading === g.id + "result"}
+                  <button onClick={() => handleSetResult(g, "home")} disabled={grading === g.id + "result"}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.result === "home" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
                     {g.homeTeam}
                   </button>
-                  <button onClick={() => handleSetResult(g, "result", "away")} disabled={grading === g.id + "result"}
+                  <button onClick={() => handleSetResult(g, "away")} disabled={grading === g.id + "result"}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.result === "away" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
                     {g.awayTeam}
                   </button>
                 </div>
               </div>
 
-              {/* Handicap result */}
-              {g.handicapLine !== undefined && (
-                <div className="border-t border-[#1a1a1a] pt-3 mb-3">
+              {/* HCP results */}
+              {g.handicapLines?.map((l, i) => (
+                <div key={i} className="border-t border-[#1a1a1a] pt-3 mb-3">
                   <div className="text-xs text-gray-500 mb-2">
-                    Handicap {g.handicapLine > 0 ? "+" : ""}{g.handicapLine} {g.handicapResult ? "→ " + (g.handicapResult === "home" ? g.homeTeam : g.awayTeam) : "(αποτέλεσμα;)"}
+                    HCP {l.line > 0 ? "+" : ""}{l.line} {l.result ? "→ " + (l.result === "home" ? g.homeTeam : g.awayTeam) : "(αποτέλεσμα;)"}
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleSetResult(g, "handicapResult", "home")} disabled={grading === g.id + "handicapResult"}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.handicapResult === "home" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
-                      {g.homeTeam} {g.handicapLine > 0 ? "+" : ""}{g.handicapLine}
+                    <button onClick={() => handleSetHCPResult(g, i, "home")} disabled={!!grading}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${l.result === "home" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      {g.homeTeam} {l.line > 0 ? "+" : ""}{l.line}
                     </button>
-                    <button onClick={() => handleSetResult(g, "handicapResult", "away")} disabled={grading === g.id + "handicapResult"}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.handicapResult === "away" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
-                      {g.awayTeam} {g.handicapLine > 0 ? "-" : "+"}{Math.abs(g.handicapLine)}
+                    <button onClick={() => handleSetHCPResult(g, i, "away")} disabled={!!grading}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${l.result === "away" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      {g.awayTeam} {l.line > 0 ? "-" : "+"}{Math.abs(l.line)}
                     </button>
                   </div>
                 </div>
-              )}
+              ))}
 
-              {/* O/U result */}
-              {g.ouLine !== undefined && (
-                <div className="border-t border-[#1a1a1a] pt-3">
+              {/* OU results */}
+              {g.ouLines?.map((l, i) => (
+                <div key={i} className="border-t border-[#1a1a1a] pt-3 mb-3">
                   <div className="text-xs text-gray-500 mb-2">
-                    Over/Under {g.ouLine} {g.ouResult ? "→ " + (g.ouResult === "over" ? "Over" : "Under") : "(αποτέλεσμα;)"}
+                    O/U {l.line} {l.result ? "→ " + (l.result === "over" ? "Over" : "Under") : "(αποτέλεσμα;)"}
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleSetResult(g, "ouResult", "over")} disabled={grading === g.id + "ouResult"}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.ouResult === "over" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
-                      Over {g.ouLine}
+                    <button onClick={() => handleSetOUResult(g, i, "over")} disabled={!!grading}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${l.result === "over" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      Over {l.line}
                     </button>
-                    <button onClick={() => handleSetResult(g, "ouResult", "under")} disabled={grading === g.id + "ouResult"}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${g.ouResult === "under" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
-                      Under {g.ouLine}
+                    <button onClick={() => handleSetOUResult(g, i, "under")} disabled={!!grading}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${l.result === "under" ? "bg-[#ff751f] text-black" : "bg-[#1a1a1a] border border-[#333] text-white hover:border-[#ff751f]"}`}>
+                      Under {l.line}
                     </button>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
           ))}
         </div>
