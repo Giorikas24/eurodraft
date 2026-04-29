@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { collection, getDocs, orderBy, query, limit, doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { useEffect, useState, useRef } from "react";
+import { collection, getDocs, orderBy, query, limit, doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
@@ -75,21 +75,20 @@ function CountdownTimer({ deadline }: { deadline: any }) {
     return () => clearInterval(interval);
   }, [deadline]);
 
-  if (expired) return <span className="text-red-400 text-sm">Έληξε</span>;
+  if (expired) return <span className="text-red-500 font-black text-sm">ΕΛΗΞΕ</span>;
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2">
       {[
-        { val: timeLeft.hours, label: "ω" },
-        { val: timeLeft.minutes, label: "λ" },
-        { val: timeLeft.seconds, label: "δ" },
+        { val: timeLeft.hours, label: "ΩΡ" },
+        { val: timeLeft.minutes, label: "ΛΕΠ" },
+        { val: timeLeft.seconds, label: "ΔΕΥ" },
       ].map(({ val, label }, i) => (
-        <div key={i} className="flex items-center gap-0.5">
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1.5 min-w-[34px] text-center shadow-inner">
-            <span className="text-sm font-bold text-white tabular-nums">{String(val).padStart(2, "0")}</span>
+        <div key={i} className="flex items-center gap-2">
+          <div className="bg-[#ff751f] text-black font-black text-xl w-12 h-12 flex items-center justify-center" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {String(val).padStart(2, "0")}
           </div>
-          <span className="text-[10px] text-gray-600 mx-0.5">{label}</span>
-          {i < 2 && <span className="text-[#ff751f] font-bold mx-0.5">:</span>}
+          {i < 2 && <span className="text-[#ff751f] font-black text-xl">:</span>}
         </div>
       ))}
     </div>
@@ -113,37 +112,6 @@ function AnimatedNumber({ value }: { value: number }) {
   return <>{display}</>;
 }
 
-function ChallengeWidget() {
-  const [challenge, setChallenge] = useState<{text: string; bonus: number} | null>(null);
-
-  useEffect(() => {
-    const fetchChallenge = async () => {
-      try {
-        const snap = await getDoc(doc(db, "config", "weeklyChallenge"));
-        if (snap.exists()) setChallenge(snap.data() as {text: string; bonus: number});
-      } catch (err) { console.error(err); }
-    };
-    fetchChallenge();
-  }, []);
-
-  if (!challenge || !challenge.text) return (
-    <div className="bg-gradient-to-br from-[rgba(255,117,31,0.08)] to-[rgba(255,117,31,0.02)] border border-[rgba(255,117,31,0.15)] rounded-xl p-4">
-      <div className="text-sm font-bold text-[#ff751f] mb-1.5">🏆 Σύντομα!</div>
-      <div className="text-xs text-gray-500 leading-relaxed">Εβδομαδιαία challenges με bonus πόντους.</div>
-    </div>
-  );
-
-  return (
-    <div className="bg-gradient-to-br from-[rgba(255,117,31,0.08)] to-transparent border border-[rgba(255,117,31,0.2)] rounded-xl p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-black text-[#ff751f]">🏆 Αυτή την εβδομάδα</div>
-        <span className="text-xs bg-[rgba(255,117,31,0.15)] text-[#ff751f] border border-[rgba(255,117,31,0.3)] px-2 py-0.5 rounded-full font-black">+{challenge.bonus} πτς</span>
-      </div>
-      <div className="text-xs text-gray-300 leading-relaxed">{challenge.text}</div>
-    </div>
-  );
-}
-
 export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
@@ -157,10 +125,18 @@ export default function Home() {
   const [topUsers, setTopUsers] = useState<TopUser[]>([]);
   const [myRank, setMyRank] = useState<number>(0);
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<{text: string; bonus: number} | null>(null);
 
-  useEffect(() => { fetchCurrentMatchday(); fetchLeaderboard(); }, []);
+  useEffect(() => { fetchCurrentMatchday(); fetchLeaderboard(); fetchChallenge(); }, []);
   useEffect(() => { if (user && matchday) fetchUserPredictions(matchday.id); }, [user, matchday]);
   useEffect(() => { if (matchday && games.length > 0) fetchGameStats(matchday.id); }, [matchday, games]);
+
+  const fetchChallenge = async () => {
+    try {
+      const snap = await getDoc(doc(db, "config", "weeklyChallenge"));
+      if (snap.exists()) setChallenge(snap.data() as {text: string; bonus: number});
+    } catch (err) { console.error(err); }
+  };
 
   const fetchLeaderboard = async () => {
     try {
@@ -242,16 +218,10 @@ export default function Home() {
     const deadline = matchday.deadline.toDate ? matchday.deadline.toDate() : new Date(matchday.deadline);
     if (new Date() > deadline) { alert("Το deadline έχει περάσει!"); return; }
     setSaving(pickKey);
-
-    // Toggle — αν κλικάρεις την ίδια επιλογή, αποεπιλέγεται
     const newPredictions = { ...predictions };
-    if (newPredictions[pickKey] === pick) {
-      delete newPredictions[pickKey];
-    } else {
-      newPredictions[pickKey] = pick;
-    }
+    if (newPredictions[pickKey] === pick) delete newPredictions[pickKey];
+    else newPredictions[pickKey] = pick;
     setPredictions(newPredictions);
-
     try {
       await setDoc(doc(db, "predictions", user.uid + "_" + matchday.id), {
         userId: user.uid, matchdayId: matchday.id, picks: newPredictions, updatedAt: new Date(),
@@ -261,30 +231,16 @@ export default function Home() {
     finally { setSaving(null); }
   };
 
-  // Για HCP/OU — μόνο μία επιλογή ανά κατηγορία ανά ματς
   const handleHCPPick = async (gameId: string, lineIndex: number) => {
     if (!user) { router.push("/auth/login"); return; }
     if (!matchday) return;
     const deadline = matchday.deadline.toDate ? matchday.deadline.toDate() : new Date(matchday.deadline);
     if (new Date() > deadline) { alert("Το deadline έχει περάσει!"); return; }
-
     const pickKey = `${gameId}_hcp_${lineIndex}`;
     setSaving(pickKey);
-
     const newPredictions = { ...predictions };
-
-    // Αφαίρεσε όλες τις υπάρχουσες HCP επιλογές για αυτό το ματς
-    Object.keys(newPredictions).forEach(k => {
-      if (k.startsWith(`${gameId}_hcp_`)) delete newPredictions[k];
-    });
-
-    // Toggle
-    if (predictions[pickKey]) {
-      // ήδη επιλεγμένο → αποεπίλεξε
-    } else {
-      newPredictions[pickKey] = "selected";
-    }
-
+    Object.keys(newPredictions).forEach(k => { if (k.startsWith(`${gameId}_hcp_`)) delete newPredictions[k]; });
+    if (!predictions[pickKey]) newPredictions[pickKey] = "selected";
     setPredictions(newPredictions);
     try {
       await setDoc(doc(db, "predictions", user.uid + "_" + matchday.id), {
@@ -299,24 +255,11 @@ export default function Home() {
     if (!matchday) return;
     const deadline = matchday.deadline.toDate ? matchday.deadline.toDate() : new Date(matchday.deadline);
     if (new Date() > deadline) { alert("Το deadline έχει περάσει!"); return; }
-
     const pickKey = `${gameId}_ou_${lineIndex}`;
     setSaving(pickKey);
-
     const newPredictions = { ...predictions };
-
-    // Αφαίρεσε όλες τις υπάρχουσες OU επιλογές για αυτό το ματς
-    Object.keys(newPredictions).forEach(k => {
-      if (k.startsWith(`${gameId}_ou_`)) delete newPredictions[k];
-    });
-
-    // Toggle
-    if (predictions[pickKey]) {
-      // ήδη επιλεγμένο → αποεπίλεξε
-    } else {
-      newPredictions[pickKey] = "selected";
-    }
-
+    Object.keys(newPredictions).forEach(k => { if (k.startsWith(`${gameId}_ou_`)) delete newPredictions[k]; });
+    if (!predictions[pickKey]) newPredictions[pickKey] = "selected";
     setPredictions(newPredictions);
     try {
       await setDoc(doc(db, "predictions", user.uid + "_" + matchday.id), {
@@ -337,384 +280,494 @@ export default function Home() {
   const progressPct = totalPicks > 0 ? (pickedCount / totalPicks) * 100 : 0;
 
   return (
-    <main className="min-h-screen bg-[#080808] text-white overflow-x-hidden">
+    <main className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden" style={{ fontFamily: "'Arial Black', 'Impact', sans-serif" }}>
       <Navbar />
 
-      {/* Hero */}
-      <div className="relative overflow-hidden bg-[#080808]">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[#ff751f] opacity-[0.06] blur-[120px] rounded-full"></div>
-          <div className="absolute top-[200px] left-[-100px] w-[400px] h-[400px] bg-[#ff751f] opacity-[0.03] blur-[100px] rounded-full"></div>
-          <div className="absolute top-[100px] right-[-100px] w-[300px] h-[300px] bg-[#ff751f] opacity-[0.03] blur-[100px] rounded-full"></div>
-          <div className="absolute inset-0 opacity-[0.03]" style={{
-            backgroundImage: "linear-gradient(#ff751f 1px, transparent 1px), linear-gradient(90deg, #ff751f 1px, transparent 1px)",
-            backgroundSize: "60px 60px"
-          }}></div>
+      {/* HERO — 90s basketball */}
+      <div className="relative overflow-hidden bg-[#0a0a0a]">
+
+        {/* Court lines background */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.04]">
+          {/* Center circle */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-4 border-white"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-white"></div>
+          {/* Half court line */}
+          <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white"></div>
+          {/* Three point arc left */}
+          <div className="absolute top-1/2 -translate-y-1/2 -left-20 w-80 h-96 rounded-full border-4 border-white" style={{ clipPath: "inset(0 0 0 50%)" }}></div>
+          {/* Three point arc right */}
+          <div className="absolute top-1/2 -translate-y-1/2 -right-20 w-80 h-96 rounded-full border-4 border-white" style={{ clipPath: "inset(0 50% 0 0)" }}></div>
         </div>
 
-        <div className="w-full max-w-7xl mx-auto px-5 md:px-10 py-16 md:py-28 flex flex-col items-center text-center relative">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-            className="flex items-center gap-2 mb-6">
-            <div className="w-2 h-2 rounded-full bg-[#ff751f] animate-pulse shadow-[0_0_8px_rgba(255,117,31,0.8)]"></div>
-            <span className="text-[#ff751f] text-xs tracking-[4px] font-medium">EUROLEAGUE PREDICTIONS</span>
-          </motion.div>
+        {/* Big orange diagonal block */}
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-[#ff751f] opacity-[0.06]" style={{ clipPath: "polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)" }}></div>
 
-          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-5xl md:text-8xl font-bold leading-[1.1] mb-6 tracking-tight">
-            Πρόβλεψε.<br />Ανταγωνίσου.<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff751f] to-[#ff9a5c]">Κέρδισε.</span>
-          </motion.h1>
+        <div className="relative w-full max-w-7xl mx-auto px-5 md:px-10 py-12 md:py-16">
+          <div className="flex flex-col md:flex-row md:items-end gap-8 md:gap-16">
 
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-gray-400 text-sm md:text-lg leading-relaxed mb-10 max-w-xl px-4">
-            Κάνε τις προβλέψεις σου για κάθε ματς της Euroleague, μάζεψε πόντους και ανέβα στην παγκόσμια κατάταξη.
-          </motion.p>
+            {/* Left — big type */}
+            <div className="flex-1">
+              <motion.div
+                initial={{ opacity: 0, x: -40 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                {/* Overline */}
+                <div className="flex items-center gap-0 mb-4">
+                  <div className="bg-[#ff751f] px-3 py-1">
+                    <span className="text-black text-[10px] font-black tracking-[4px] uppercase">Euroleague</span>
+                  </div>
+                  <div className="bg-white px-3 py-1">
+                    <span className="text-black text-[10px] font-black tracking-[4px] uppercase">Predictions</span>
+                  </div>
+                </div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex gap-3 mb-14 w-full max-w-xs md:max-w-none md:w-auto">
-            <a href="/auth/register" className="flex-1 md:flex-none text-center bg-[#ff751f] text-black font-bold px-8 md:px-10 py-3.5 rounded-xl text-sm hover:bg-[#e6671a] transition-all shadow-[0_0_30px_rgba(255,117,31,0.3)] hover:shadow-[0_0_40px_rgba(255,117,31,0.5)] hover:scale-105 transform">
-              Ξεκίνα δωρεάν →
-            </a>
-            <a href="/rules" className="flex-1 md:flex-none text-center border border-[#2a2a2a] text-white px-8 md:px-10 py-3.5 rounded-xl text-sm hover:bg-[#111] hover:border-[#ff751f] transition-all">
-              Πώς λειτουργεί
-            </a>
-          </motion.div>
+                {/* Main title */}
+                <div className="mb-2">
+                  <h1 className="text-[80px] md:text-[120px] font-black leading-[0.85] tracking-tighter uppercase text-white">
+                    COURT
+                  </h1>
+                  <h1 className="text-[80px] md:text-[120px] font-black leading-[0.85] tracking-tighter uppercase text-[#ff751f]"
+                    style={{ WebkitTextStroke: "0px", textShadow: "4px 4px 0px rgba(0,0,0,0.5)" }}>
+                    PROPHET
+                  </h1>
+                </div>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.4 }}
-            className="flex gap-0 w-full max-w-sm md:max-w-none justify-center">
-            <div className="pr-8 md:pr-12 mr-8 md:mr-12 border-r border-[#1a1a1a] text-center">
-              <div className="text-3xl md:text-4xl font-bold text-white"><AnimatedNumber value={totalUsers} /></div>
-              <div className="text-[10px] tracking-[3px] text-gray-600 mt-1.5 uppercase">Παίκτες</div>
+                {/* Tagline */}
+                <div className="border-l-4 border-[#ff751f] pl-4 mt-6 mb-8">
+                  <p className="text-gray-400 text-sm font-bold leading-relaxed uppercase tracking-wide" style={{ fontFamily: "Arial, sans-serif" }}>
+                    Κάνε τις προβλέψεις σου.<br />
+                    Ανέβα στην κατάταξη.<br />
+                    Αποδείξου ο καλύτερος.
+                  </p>
+                </div>
+
+                {!user && (
+                  <div className="flex gap-0">
+                    <a href="/auth/register"
+                      className="bg-[#ff751f] text-black font-black px-8 py-4 text-sm uppercase tracking-widest hover:bg-white transition-colors">
+                      Ξεκίνα τώρα
+                    </a>
+                    <a href="/rules"
+                      className="border-2 border-white text-white font-black px-8 py-4 text-sm uppercase tracking-widest hover:bg-white hover:text-black transition-colors">
+                      Κανόνες
+                    </a>
+                  </div>
+                )}
+              </motion.div>
             </div>
-            <div className="pr-8 md:pr-12 mr-8 md:mr-12 border-r border-[#1a1a1a] text-center">
-              <div className="text-3xl md:text-4xl font-bold text-white">{matchday ? (matchday.name || "#" + matchday.number) : "—"}</div>
-              <div className="text-[10px] tracking-[3px] text-gray-600 mt-1.5 uppercase">Αγωνιστική</div>
-            </div>
-            <div className="text-center">
-              {matchday ? <CountdownTimer deadline={matchday.deadline} /> : <div className="text-3xl md:text-4xl font-bold text-white">—</div>}
-              <div className="text-[10px] tracking-[3px] text-gray-600 mt-1.5 uppercase">Deadline</div>
-            </div>
-          </motion.div>
+
+            {/* Right — stats scoreboard */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="md:w-80"
+            >
+              <div className="border-2 border-white/20 bg-black">
+                {/* Scoreboard header */}
+                <div className="bg-[#ff751f] px-4 py-2 flex items-center justify-between">
+                  <span className="text-black text-xs font-black tracking-widest uppercase">Live Scoreboard</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-black animate-pulse"></div>
+                    <span className="text-black text-[10px] font-black">LIVE</span>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 divide-x divide-white/10">
+                  <div className="p-4 border-b border-white/10">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1" style={{ fontFamily: "Arial, sans-serif" }}>Παίκτες</div>
+                    <div className="text-4xl font-black text-white tabular-nums"><AnimatedNumber value={totalUsers} /></div>
+                  </div>
+                  <div className="p-4 border-b border-white/10">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1" style={{ fontFamily: "Arial, sans-serif" }}>Αγωνιστική</div>
+                    <div className="text-2xl font-black text-[#ff751f] truncate">
+                      {matchday ? (matchday.name || `#${matchday.number}`) : "—"}
+                    </div>
+                  </div>
+                  <div className="p-4 col-span-2">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-2" style={{ fontFamily: "Arial, sans-serif" }}>Deadline</div>
+                    {matchday ? <CountdownTimer deadline={matchday.deadline} /> : <span className="text-2xl font-black text-white">—</span>}
+                  </div>
+                </div>
+
+                {/* Progress */}
+                {user && matchday && (
+                  <div className="border-t border-white/10 p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>Προβλέψεις</span>
+                      <span className="text-xs font-black text-[#ff751f]">{pickedCount}/{totalPicks}</span>
+                    </div>
+                    <div className="h-2 bg-white/10 w-full">
+                      <motion.div className="h-full bg-[#ff751f]"
+                        initial={{ width: 0 }} animate={{ width: progressPct + "%" }} transition={{ duration: 0.6 }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#ff751f] to-transparent opacity-30"></div>
+        {/* Bottom stripe */}
+        <div className="h-2 bg-[#ff751f]"></div>
       </div>
 
       {/* Ticker */}
       {games.length > 0 && (
-        <div className="bg-gradient-to-r from-[#e6671a] via-[#ff751f] to-[#e6671a] overflow-hidden">
-          <div className="flex gap-8 px-5 py-2.5 overflow-x-auto scrollbar-none">
+        <div className="bg-black border-b-2 border-[#ff751f] overflow-hidden">
+          <div className="flex overflow-x-auto scrollbar-none">
             {[...games, ...games].map((g, i) => (
-              <div key={i} className="flex items-center gap-2 whitespace-nowrap flex-shrink-0">
-                <span className="text-xs font-bold text-black">{g.homeTeam.substring(0,3).toUpperCase()}</span>
-                <span className="text-[10px] text-black/50">vs</span>
-                <span className="text-xs font-bold text-black">{g.awayTeam.substring(0,3).toUpperCase()}</span>
-                <span className="text-xs text-black/60 ml-1">{formatGameDate(g.date)}</span>
-                <span className="text-black/20 mx-2">|</span>
+              <div key={i} className="flex items-center gap-3 px-6 py-2.5 border-r border-white/10 flex-shrink-0">
+                <span className="text-[10px] font-black text-white">{g.homeTeam.substring(0,3).toUpperCase()}</span>
+                <span className="text-[#ff751f] font-black text-xs">×</span>
+                <span className="text-[10px] font-black text-white">{g.awayTeam.substring(0,3).toUpperCase()}</span>
+                <span className="text-[9px] text-gray-600 uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{formatGameDate(g.date)}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Progress bar */}
-      {matchday && games.length > 0 && user && (
-        <div className="w-full max-w-7xl mx-auto px-5 md:px-10 pt-6">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs text-gray-500 font-medium">Προβλέψεις αγωνιστικής</span>
-            <span className="text-xs text-[#ff751f] font-bold">{pickedCount}/{totalPicks}</span>
-          </div>
-          <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-            <motion.div className="h-1.5 bg-gradient-to-r from-[#ff751f] to-[#ff9a5c] rounded-full shadow-[0_0_8px_rgba(255,117,31,0.5)]"
-              initial={{ width: 0 }} animate={{ width: progressPct + "%" }} transition={{ duration: 0.5, ease: "easeOut" }} />
-          </div>
-        </div>
-      )}
-
-      {/* Games */}
+      {/* Main content */}
       <div className="w-full max-w-7xl mx-auto px-5 md:px-10 py-8">
-        <div className="flex justify-between items-center mb-5">
-          <div>
-            <h2 className="text-lg font-bold">
-              {matchday ? (matchday.name || "Αγωνιστική #" + matchday.number) : "Δεν υπάρχει ανοιχτή αγωνιστική"}
-            </h2>
-            {matchday && (
-              <p className="text-xs text-gray-600 mt-0.5 hidden md:block">
-                Deadline: {matchday.deadline ? (matchday.deadline.toDate ? matchday.deadline.toDate() : new Date(matchday.deadline)).toLocaleString("el-GR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : ""}
-              </p>
-            )}
-          </div>
-          {matchday && (
-            <div className="flex items-center gap-1.5 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-              <span className="text-xs text-gray-400">Ανοιχτή</span>
-            </div>
-          )}
-        </div>
+        <div className="flex flex-col lg:flex-row gap-8">
 
-        {loading ? (
-          <div className="flex flex-col gap-3">
-            {[1,2,3].map(i => (
-              <div key={i} className="bg-[#111] rounded-2xl border border-[#1e1e1e] h-40 animate-pulse"></div>
-            ))}
-          </div>
-        ) : games.length === 0 ? (
-          <div className="text-gray-500 text-sm py-20 text-center">
-            {matchday ? "Δεν υπάρχουν ματς ακόμα." : "Δεν υπάρχει ανοιχτή αγωνιστική αυτή τη στιγμή."}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {games.map((g, index) => {
-              const stats = gameStats[g.id];
-              const hasHCP = g.handicapLines?.length > 0;
-              const hasOU = g.ouLines?.length > 0;
-              const pickedHCP = hasHCP && Object.keys(predictions).some(k => k.startsWith(`${g.id}_hcp_`));
-              const pickedOU = hasOU && Object.keys(predictions).some(k => k.startsWith(`${g.id}_ou_`));
-              const isExpanded = expandedGame === g.id;
+          {/* Games */}
+          <div className="flex-1 min-w-0">
 
-              return (
-                <motion.div key={g.id}
-                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: index * 0.08 }}
-                  className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
-                    predictions[g.id] && (!hasHCP || pickedHCP) && (!hasOU || pickedOU)
-                      ? "bg-[rgba(255,117,31,0.04)] border-[rgba(255,117,31,0.2)] shadow-[0_0_30px_rgba(255,117,31,0.05)]"
-                      : "bg-[#0f0f0f] border-[#1a1a1a] hover:border-[#2a2a2a]"
-                  }`}
-                >
-                  {/* Card — πάντα ορατό */}
-                  <div className="p-5">
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 bg-[#1a1a1a] px-2.5 py-1 rounded-lg">{formatGameDate(g.date)}</span>
-                        {g.status === "live" && (
-                          <span className="text-[10px] bg-[#ff751f] text-black px-2.5 py-1 rounded-lg font-bold inline-flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse inline-block"></span>
-                            LIVE
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[10px]">
-                        <span className={`px-1.5 py-0.5 rounded font-medium ${predictions[g.id] ? "text-[#ff751f] bg-[rgba(255,117,31,0.1)]" : "text-gray-700 bg-[#1a1a1a]"}`}>1/2</span>
-                        {hasHCP && <span className={`px-1.5 py-0.5 rounded font-medium ${pickedHCP ? "text-blue-400 bg-[rgba(96,165,250,0.1)]" : "text-gray-700 bg-[#1a1a1a]"}`}>HCP</span>}
-                        {hasOU && <span className={`px-1.5 py-0.5 rounded font-medium ${pickedOU ? "text-green-400 bg-[rgba(74,222,128,0.1)]" : "text-gray-700 bg-[#1a1a1a]"}`}>O/U</span>}
-                      </div>
-                    </div>
-
-                    {/* Teams */}
-                    <div className="flex items-center justify-center gap-3 mb-4">
-                      <span className="text-base font-bold text-white">{g.homeTeam}</span>
-                      <span className="text-xs text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">vs</span>
-                      <span className="text-base font-bold text-white">{g.awayTeam}</span>
-                    </div>
-
-                    {/* 1/2 */}
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                      {["home", "away"].map(side => (
-                        <motion.button key={side} whileTap={{ scale: 0.97 }}
-                          onClick={() => handlePick(g.id, side)} disabled={saving === g.id}
-                          className={`rounded-xl px-3 py-3 flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                            predictions[g.id] === side
-                              ? "bg-gradient-to-br from-[rgba(255,117,31,0.2)] to-[rgba(255,117,31,0.05)] border border-[#ff751f] shadow-[0_0_20px_rgba(255,117,31,0.15)]"
-                              : "bg-[#151515] border border-[#222] hover:border-[#333] hover:bg-[#1a1a1a]"
-                          }`}>
-                          <span className="text-xs font-semibold text-center leading-tight">{side === "home" ? g.homeTeam : g.awayTeam}</span>
-                          <span className="text-xs text-[#ff751f] font-bold">+{side === "home" ? g.homePoints : g.awayPoints} πτς</span>
-                        </motion.button>
-                      ))}
-                    </div>
-
-                    {stats && stats.total > 0 && (
-                      <div className="mb-3">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-[10px] text-gray-600">{stats.homePct}%</span>
-                          <span className="text-[10px] text-gray-700">{stats.total} επιλογές</span>
-                          <span className="text-[10px] text-gray-600">{stats.awayPct}%</span>
-                        </div>
-                        <div className="h-1 rounded-full overflow-hidden bg-[#1a1a1a] flex">
-                          <motion.div className="h-1 bg-gradient-to-r from-[#ff751f] to-[#ff9a5c]"
-                            initial={{ width: 0 }} animate={{ width: stats.homePct + "%" }} transition={{ duration: 0.6 }} />
-                          <div className="h-1 bg-[#2a2a2a] flex-1"></div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Expand button */}
-                    {(hasHCP || hasOU) && (
-                      <button
-                        onClick={() => setExpandedGame(isExpanded ? null : g.id)}
-                        className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                          isExpanded
-                            ? "bg-[rgba(255,117,31,0.1)] border border-[rgba(255,117,31,0.3)] text-[#ff751f]"
-                            : "bg-[#151515] border border-[#222] text-gray-400 hover:border-[#ff751f] hover:text-[#ff751f]"
-                        }`}>
-                        {isExpanded ? "▲ Κλείσιμο" : "▼ Δες HCP & O/U"}
-                        {(pickedHCP || pickedOU) && !isExpanded && (
-                          <span className="bg-[#ff751f] text-black text-[9px] px-1.5 py-0.5 rounded-full font-black">
-                            {(pickedHCP ? 1 : 0) + (pickedOU ? 1 : 0)} επιλογές
-                          </span>
-                        )}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Expanded section */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="overflow-hidden border-t border-[#1a1a1a]"
-                      >
-                        <div className="p-5 flex flex-col gap-4">
-
-                          {/* HCP */}
-                          {hasHCP && (
-                            <div>
-                              <div className="flex items-center gap-2 mb-3">
-                                <span className="text-[10px] font-bold text-blue-400 bg-[rgba(96,165,250,0.1)] px-2 py-0.5 rounded-full">HCP</span>
-                                <span className="text-[10px] text-gray-600">Επέλεξε μία επιλογή</span>
-                              </div>
-                              <div className="flex flex-col gap-2">
-                                {g.handicapLines.map((l, i) => {
-                                  const pickKey = `${g.id}_hcp_${i}`;
-                                  const isSelected = !!predictions[pickKey];
-                                  const teamName = l.team === "home" ? g.homeTeam : g.awayTeam;
-                                  return (
-                                    <motion.button key={i} whileTap={{ scale: 0.97 }}
-                                      onClick={() => handleHCPPick(g.id, i)}
-                                      disabled={saving === pickKey}
-                                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                                        isSelected
-                                          ? "bg-gradient-to-br from-[rgba(96,165,250,0.2)] to-[rgba(96,165,250,0.05)] border border-blue-400 text-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.1)]"
-                                          : "bg-[#151515] border border-[#222] text-white hover:border-[#333] hover:bg-[#1a1a1a]"
-                                      }`}>
-                                      <span>{teamName} {l.line > 0 ? "+" : ""}{l.line}</span>
-                                      <span className={`text-xs font-black ${isSelected ? "text-blue-400" : "text-[#ff751f]"}`}>+{l.points} πτς</span>
-                                    </motion.button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* OU */}
-                          {hasOU && (
-                            <div>
-                              <div className="flex items-center gap-2 mb-3">
-                                <span className="text-[10px] font-bold text-green-400 bg-[rgba(74,222,128,0.1)] px-2 py-0.5 rounded-full">O/U</span>
-                                <span className="text-[10px] text-gray-600">Επέλεξε μία επιλογή</span>
-                              </div>
-                              <div className="flex flex-col gap-2">
-                                {g.ouLines.map((l, i) => {
-                                  const pickKey = `${g.id}_ou_${i}`;
-                                  const isSelected = !!predictions[pickKey];
-                                  return (
-                                    <motion.button key={i} whileTap={{ scale: 0.97 }}
-                                      onClick={() => handleOUPick(g.id, i)}
-                                      disabled={saving === pickKey}
-                                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                                        isSelected
-                                          ? "bg-gradient-to-br from-[rgba(74,222,128,0.2)] to-[rgba(74,222,128,0.05)] border border-green-400 text-green-400 shadow-[0_0_15px_rgba(74,222,128,0.1)]"
-                                          : "bg-[#151515] border border-[#222] text-white hover:border-[#333] hover:bg-[#1a1a1a]"
-                                      }`}>
-                                      <span>{l.type === "over" ? "Over" : "Under"} {l.line}</span>
-                                      <span className={`text-xs font-black ${isSelected ? "text-green-400" : "text-[#ff751f]"}`}>+{l.points} πτς</span>
-                                    </motion.button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Bottom widgets */}
-      <div className="w-full max-w-7xl mx-auto px-5 md:px-10 pb-12 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
-          className="bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] p-5 hover:border-[#2a2a2a] transition-all">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-[10px] tracking-[3px] text-gray-600 font-medium uppercase">Γενική Κατάταξη</span>
-            <a href="/leaderboard" className="text-xs text-[#ff751f] hover:underline font-medium">Δες όλους →</a>
-          </div>
-          {topUsers.length === 0 ? (
-            <div className="text-gray-600 text-sm">Κανένας παίκτης ακόμα.</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {topUsers.map((u, i) => {
-                const isMe = user?.uid === u.id;
-                return (
-                  <div key={u.id} className={`flex items-center gap-2.5 py-1 ${isMe ? "bg-[rgba(255,117,31,0.05)] rounded-lg px-2 -mx-2" : ""}`}>
-                    <span className="text-xs w-5 text-center">{i < 3 ? ["🥇","🥈","🥉"][i] : <span className="text-gray-600">{i+1}</span>}</span>
-                    <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
-                      {u.username?.[0]?.toUpperCase() || "?"}
-                    </div>
-                    <span className="text-xs text-white flex-1 truncate font-medium">
-                      {u.username}{isMe && <span className="text-[#ff751f] ml-1">(εσύ)</span>}
-                    </span>
-                    <span className="text-xs text-[#ff751f] font-bold">{u.points}</span>
-                  </div>
-                );
-              })}
-              {myRank > 5 && user && (
-                <div className="border-t border-[#1a1a1a] pt-2 mt-1">
-                  <div className="flex items-center gap-2.5 bg-[rgba(255,117,31,0.05)] rounded-lg px-2 py-1">
-                    <span className="text-xs text-gray-600 w-5 text-center">{myRank}</span>
-                    <div className="w-6 h-6 rounded-full bg-[#ff751f] flex items-center justify-center text-[10px] font-bold text-black flex-shrink-0">
-                      {user.displayName?.[0]?.toUpperCase() || "?"}
-                    </div>
-                    <span className="text-xs text-white flex-1 truncate">{user.displayName} <span className="text-[#ff751f]">(εσύ)</span></span>
-                  </div>
+            {/* Section header */}
+            <div className="flex items-center gap-0 mb-6">
+              <div className="bg-[#ff751f] px-4 py-2">
+                <span className="text-black text-xs font-black uppercase tracking-widest">
+                  {matchday ? (matchday.name || `Αγωνιστική #${matchday.number}`) : "Προβλέψεις"}
+                </span>
+              </div>
+              {matchday && (
+                <div className="bg-white/10 px-4 py-2 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
+                  <span className="text-xs font-black text-white uppercase tracking-widest">Ανοιχτή</span>
                 </div>
               )}
             </div>
-          )}
-        </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
-          className="bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] p-5 hover:border-[#2a2a2a] transition-all">
-          <div className="text-[10px] tracking-[3px] text-gray-600 font-medium uppercase mb-4">Η Θέση Μου</div>
-          {user ? (
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="text-sm text-white font-bold">{user.displayName}</div>
-                  <div className="text-xs text-gray-600 mt-0.5">{pickedCount}/{totalPicks} προβλέψεις</div>
+            {loading ? (
+              <div className="flex flex-col gap-3">
+                {[1,2,3].map(i => (
+                  <div key={i} className="h-24 bg-white/[0.02] border-2 border-white/[0.06] animate-pulse"></div>
+                ))}
+              </div>
+            ) : games.length === 0 ? (
+              <div className="text-gray-600 text-sm py-16 text-center border-2 border-white/[0.06]">
+                Δεν υπάρχουν ματς.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {games.map((g, index) => {
+                  const stats = gameStats[g.id];
+                  const hasHCP = g.handicapLines?.length > 0;
+                  const hasOU = g.ouLines?.length > 0;
+                  const pickedHCP = hasHCP && Object.keys(predictions).some(k => k.startsWith(`${g.id}_hcp_`));
+                  const pickedOU = hasOU && Object.keys(predictions).some(k => k.startsWith(`${g.id}_ou_`));
+                  const picked12 = !!predictions[g.id];
+                  const allDone = picked12 && (!hasHCP || pickedHCP) && (!hasOU || pickedOU);
+                  const isExpanded = expandedGame === g.id;
+
+                  return (
+                    <motion.div key={g.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className={`border-2 overflow-hidden transition-all ${
+                        allDone ? "border-[#ff751f] bg-[#ff751f]/5" : "border-white/10 bg-black hover:border-white/30"
+                      }`}
+                    >
+                      {/* Game header stripe */}
+                      {allDone && <div className="h-1 bg-[#ff751f]"></div>}
+
+                      <div className="p-4 md:p-5">
+                        {/* Meta */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>
+                              {formatGameDate(g.date)}
+                            </span>
+                            {g.status === "live" && (
+                              <div className="bg-red-600 px-2 py-0.5 flex items-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+                                <span className="text-[9px] text-white font-black uppercase">Live</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {[
+                              { label: "1/2", active: picked12 },
+                              ...(hasHCP ? [{ label: "HCP", active: pickedHCP }] : []),
+                              ...(hasOU ? [{ label: "O/U", active: pickedOU }] : []),
+                            ].map(b => (
+                              <span key={b.label} className={`text-[9px] px-2 py-0.5 font-black uppercase tracking-wider border ${
+                                b.active
+                                  ? "bg-[#ff751f] border-[#ff751f] text-black"
+                                  : "border-white/20 text-gray-600"
+                              }`}>{b.label}</span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Teams */}
+                        <div className="flex items-stretch gap-0 mb-4">
+                          <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handlePick(g.id, "home")}
+                            disabled={!!saving}
+                            className={`flex-1 flex items-center justify-between px-4 py-4 border-2 transition-all ${
+                              predictions[g.id] === "home"
+                                ? "bg-[#ff751f] border-[#ff751f] text-black"
+                                : "bg-transparent border-white/10 text-white hover:border-[#ff751f]/50 hover:bg-[#ff751f]/5"
+                            }`}>
+                            <span className="text-sm font-black uppercase truncate">{g.homeTeam}</span>
+                            <span className={`text-xs font-black ml-2 flex-shrink-0 ${predictions[g.id] === "home" ? "text-black" : "text-[#ff751f]"}`}>+{g.homePoints}</span>
+                          </motion.button>
+
+                          <div className="flex items-center justify-center w-10 bg-white/5 border-y-2 border-white/10 flex-shrink-0">
+                            <span className="text-[10px] font-black text-gray-600 uppercase">vs</span>
+                          </div>
+
+                          <motion.button
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handlePick(g.id, "away")}
+                            disabled={!!saving}
+                            className={`flex-1 flex items-center justify-between px-4 py-4 border-2 transition-all ${
+                              predictions[g.id] === "away"
+                                ? "bg-[#ff751f] border-[#ff751f] text-black"
+                                : "bg-transparent border-white/10 text-white hover:border-[#ff751f]/50 hover:bg-[#ff751f]/5"
+                            }`}>
+                            <span className={`text-xs font-black mr-2 flex-shrink-0 ${predictions[g.id] === "away" ? "text-black" : "text-[#ff751f]"}`}>+{g.awayPoints}</span>
+                            <span className="text-sm font-black uppercase truncate text-right">{g.awayTeam}</span>
+                          </motion.button>
+                        </div>
+
+                        {/* Stats bar */}
+                        {stats && stats.total > 0 && (
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-[9px] font-black text-gray-600 w-8 text-right tabular-nums">{stats.homePct}%</span>
+                            <div className="flex-1 h-1 bg-white/10 flex overflow-hidden">
+                              <motion.div className="h-full bg-[#ff751f]"
+                                initial={{ width: 0 }} animate={{ width: stats.homePct + "%" }} transition={{ duration: 0.8 }} />
+                            </div>
+                            <span className="text-[9px] font-black text-gray-600 w-8 tabular-nums">{stats.awayPct}%</span>
+                          </div>
+                        )}
+
+                        {/* Expand */}
+                        {(hasHCP || hasOU) && (
+                          <button
+                            onClick={() => setExpandedGame(isExpanded ? null : g.id)}
+                            className={`w-full py-2 text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-center gap-2 ${
+                              isExpanded
+                                ? "border-[#ff751f] text-[#ff751f] bg-[#ff751f]/10"
+                                : "border-white/10 text-gray-600 hover:border-[#ff751f]/50 hover:text-[#ff751f]"
+                            }`}>
+                            {isExpanded ? "▲ Κλείσιμο" : "▼ HCP & O/U"}
+                            {(pickedHCP || pickedOU) && !isExpanded && (
+                              <span className="bg-[#ff751f] text-black text-[8px] w-4 h-4 flex items-center justify-center font-black">
+                                {(pickedHCP ? 1 : 0) + (pickedOU ? 1 : 0)}
+                              </span>
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Expanded */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="overflow-hidden border-t-2 border-white/10"
+                          >
+                            <div className="p-4 md:p-5 flex flex-col gap-5 bg-white/[0.02]">
+                              {hasHCP && (
+                                <div>
+                                  <div className="flex items-center gap-0 mb-3">
+                                    <div className="bg-white px-3 py-1">
+                                      <span className="text-black text-[9px] font-black uppercase tracking-widest">Handicap</span>
+                                    </div>
+                                    <div className="bg-white/10 px-3 py-1">
+                                      <span className="text-gray-400 text-[9px] font-black uppercase tracking-widest">Επέλεξε 1</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-2">
+                                    {g.handicapLines.map((l, i) => {
+                                      const pickKey = `${g.id}_hcp_${i}`;
+                                      const isSelected = !!predictions[pickKey];
+                                      const teamName = l.team === "home" ? g.homeTeam : g.awayTeam;
+                                      return (
+                                        <motion.button key={i} whileTap={{ scale: 0.99 }}
+                                          onClick={() => handleHCPPick(g.id, i)}
+                                          className={`flex items-center justify-between px-4 py-3 border-2 text-sm transition-all ${
+                                            isSelected
+                                              ? "bg-white text-black border-white"
+                                              : "bg-transparent border-white/10 text-white hover:border-white/40"
+                                          }`}>
+                                          <span className="font-black uppercase">{teamName} <span className="text-[#ff751f]">{l.line > 0 ? "+" : ""}{l.line}</span></span>
+                                          <span className={`text-xs font-black ${isSelected ? "text-black" : "text-[#ff751f]"}`}>+{l.points} πτς</span>
+                                        </motion.button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                              {hasOU && (
+                                <div>
+                                  <div className="flex items-center gap-0 mb-3">
+                                    <div className="bg-[#ff751f] px-3 py-1">
+                                      <span className="text-black text-[9px] font-black uppercase tracking-widest">Over / Under</span>
+                                    </div>
+                                    <div className="bg-white/10 px-3 py-1">
+                                      <span className="text-gray-400 text-[9px] font-black uppercase tracking-widest">Επέλεξε 1</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-2">
+                                    {g.ouLines.map((l, i) => {
+                                      const pickKey = `${g.id}_ou_${i}`;
+                                      const isSelected = !!predictions[pickKey];
+                                      return (
+                                        <motion.button key={i} whileTap={{ scale: 0.99 }}
+                                          onClick={() => handleOUPick(g.id, i)}
+                                          className={`flex items-center justify-between px-4 py-3 border-2 text-sm transition-all ${
+                                            isSelected
+                                              ? "bg-[#ff751f] text-black border-[#ff751f]"
+                                              : "bg-transparent border-white/10 text-white hover:border-[#ff751f]/50"
+                                          }`}>
+                                          <span className="font-black uppercase">{l.type === "over" ? "Over" : "Under"} <span className={isSelected ? "text-black" : "text-[#ff751f]"}>{l.line}</span></span>
+                                          <span className={`text-xs font-black ${isSelected ? "text-black" : "text-[#ff751f]"}`}>+{l.points} πτς</span>
+                                        </motion.button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="lg:w-64 xl:w-72 flex flex-col gap-4">
+
+            {/* Leaderboard */}
+            <div className="border-2 border-white/10 bg-black">
+              <div className="bg-white px-4 py-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-black text-xs font-black uppercase tracking-widest">Κατάταξη</span>
+                  <a href="/leaderboard" className="text-[10px] text-black font-black uppercase tracking-widest hover:text-[#ff751f] transition-colors">Όλοι →</a>
                 </div>
-                {myRank > 0 && <div className="text-2xl font-black text-[#ff751f]">#{myRank}</div>}
               </div>
-              <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                <motion.div className="h-1.5 bg-gradient-to-r from-[#ff751f] to-[#ff9a5c] rounded-full"
-                  initial={{ width: 0 }} animate={{ width: progressPct + "%" }} transition={{ duration: 0.5 }} />
-              </div>
-              <div className="flex justify-between mt-1">
-                <span className="text-[10px] text-gray-700">0</span>
-                <span className="text-[10px] text-gray-700">{totalPicks}</span>
+              <div className="p-3">
+                {topUsers.length === 0 ? (
+                  <div className="text-gray-600 text-xs py-4 text-center uppercase font-bold">Κανένας παίκτης ακόμα</div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {topUsers.map((u, i) => {
+                      const isMe = user?.uid === u.id;
+                      return (
+                        <div key={u.id} className={`flex items-center gap-3 p-2 transition-all ${isMe ? "bg-[#ff751f]" : "hover:bg-white/5"}`}>
+                          <span className={`text-xs font-black w-6 text-center ${isMe ? "text-black" : "text-gray-600"}`}>
+                            {i === 0 ? "01" : i === 1 ? "02" : i === 2 ? "03" : `0${i+1}`}
+                          </span>
+                          <div className={`w-7 h-7 flex items-center justify-center text-[10px] font-black flex-shrink-0 ${isMe ? "bg-black text-[#ff751f]" : "bg-white/10 text-white"}`}>
+                            {u.username?.[0]?.toUpperCase() || "?"}
+                          </div>
+                          <span className={`text-xs flex-1 truncate font-black uppercase ${isMe ? "text-black" : "text-white"}`}>
+                            {u.username}
+                          </span>
+                          <span className={`text-xs font-black tabular-nums ${isMe ? "text-black" : "text-[#ff751f]"}`}>{u.points}</span>
+                        </div>
+                      );
+                    })}
+                    {myRank > 5 && user && (
+                      <div className="border-t border-white/10 mt-1 pt-1">
+                        <div className="flex items-center gap-3 p-2 bg-[#ff751f]">
+                          <span className="text-xs font-black w-6 text-center text-black">{myRank}</span>
+                          <div className="w-7 h-7 bg-black flex items-center justify-center text-[10px] font-black text-[#ff751f]">
+                            {user.displayName?.[0]?.toUpperCase() || "?"}
+                          </div>
+                          <span className="text-xs flex-1 truncate font-black uppercase text-black">{user.displayName}</span>
+                          <span className="text-[9px] font-black text-black uppercase">εσύ</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-          ) : (
-            <div>
-              <div className="text-gray-600 text-sm mb-4">Συνδέσου για να δεις τη θέση σου.</div>
-              <a href="/auth/login" className="text-xs text-[#ff751f] hover:underline font-medium">Σύνδεση →</a>
-            </div>
-          )}
-        </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}
-          className="bg-[#0f0f0f] rounded-2xl border border-[#1a1a1a] p-5 hover:border-[#2a2a2a] transition-all">
-          <div className="text-[10px] tracking-[3px] text-gray-600 font-medium uppercase mb-4">Εβδομαδιαίο Challenge</div>
-          <ChallengeWidget />
-        </motion.div>
+            {/* My stats */}
+            {user ? (
+              <div className="border-2 border-white/10 bg-black">
+                <div className="bg-[#ff751f] px-4 py-2">
+                  <span className="text-black text-xs font-black uppercase tracking-widest">Η Θέση Μου</span>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <div className="text-sm font-black uppercase text-white">{user.displayName}</div>
+                      <div className="text-[10px] text-gray-600 font-bold uppercase tracking-wider mt-0.5" style={{ fontFamily: "Arial, sans-serif" }}>
+                        {pickedCount}/{totalPicks} picks
+                      </div>
+                    </div>
+                    {myRank > 0 && (
+                      <div className="text-right">
+                        <div className="text-4xl font-black text-[#ff751f] tabular-nums leading-none">#{myRank}</div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="h-2 bg-white/10 w-full">
+                    <motion.div className="h-full bg-[#ff751f]"
+                      initial={{ width: 0 }} animate={{ width: progressPct + "%" }} transition={{ duration: 0.8 }} />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="border-2 border-white/10 bg-black p-4">
+                <p className="text-xs text-gray-500 mb-4 uppercase font-bold tracking-wide" style={{ fontFamily: "Arial, sans-serif" }}>
+                  Συνδέσου για να παρακολουθείς τη θέση σου.
+                </p>
+                <div className="flex gap-0">
+                  <a href="/auth/login" className="flex-1 text-center py-2.5 text-xs border-2 border-white/20 text-white font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all">
+                    Σύνδεση
+                  </a>
+                  <a href="/auth/register" className="flex-1 text-center py-2.5 text-xs bg-[#ff751f] text-black font-black uppercase tracking-widest hover:bg-white transition-all">
+                    Εγγραφή
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Challenge */}
+            {challenge && challenge.text && (
+              <div className="border-2 border-[#ff751f] bg-black">
+                <div className="bg-[#ff751f] px-4 py-2 flex items-center justify-between">
+                  <span className="text-black text-xs font-black uppercase tracking-widest">🏆 Challenge</span>
+                  <span className="text-black text-xs font-black">+{challenge.bonus} πτς</span>
+                </div>
+                <div className="p-4">
+                  <p className="text-xs text-gray-300 leading-relaxed" style={{ fontFamily: "Arial, sans-serif" }}>{challenge.text}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </main>
   );
