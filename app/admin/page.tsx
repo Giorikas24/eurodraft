@@ -53,94 +53,140 @@ export default function AdminPage() {
     finally { setSavingChallenge(false); }
   };
 
-  if (loading) return <div className="min-h-screen bg-[#080808] flex items-center justify-center text-white">Φόρτωση...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
+      <div className="w-6 h-6 border-2 border-[#ff751f] border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
   if (!user || user.email !== ADMIN_EMAIL) return null;
 
   return (
-    <main className="min-h-screen bg-[#080808] text-white">
-      <nav className="bg-black border-b border-[#1a1a1a] h-16 flex items-center px-10 gap-4">
-        <a href="/" className="font-bold text-2xl tracking-widest">
-          <span className="text-[#ff751f]">COURT</span>
-          <span className="text-white">PROPHET</span>
+    <main className="min-h-screen bg-[#0a0a0a] text-white" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
+
+      {/* Admin Navbar */}
+      <nav className="bg-black border-b-2 border-[#ff751f] h-14 flex items-center px-10 gap-0">
+        <a href="/" className="flex items-center gap-0 mr-4">
+          <div className="bg-[#ff751f] px-2.5 py-1.5">
+            <span className="text-black font-black text-sm tracking-tighter">COURT</span>
+          </div>
+          <div className="bg-white px-2.5 py-1.5">
+            <span className="text-black font-black text-sm tracking-tighter">PROPHET</span>
+          </div>
         </a>
-        <span className="text-xs text-gray-500 border border-[#333] px-2 py-1 rounded">ADMIN</span>
+        <div className="bg-white/10 px-3 py-1.5 border border-white/20">
+          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Admin Panel</span>
+        </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto px-10 py-12">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-[#ff751f] animate-pulse"></div>
-            <span className="text-[#ff751f] text-xs tracking-[4px] font-medium">COURTPROPHET</span>
+      <div className="max-w-4xl mx-auto px-10 py-10">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-8">
+          <div className="flex items-center gap-0 mb-3">
+            <div className="bg-[#ff751f] px-3 py-1">
+              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">CourtProphet</span>
+            </div>
+            <div className="bg-white px-3 py-1">
+              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Control Room</span>
+            </div>
           </div>
-          <h1 className="text-3xl font-black mb-8">Admin Panel</h1>
+          <h1 className="text-5xl font-black uppercase leading-none tracking-tighter">
+            AD<span className="text-[#ff751f]">MIN</span>
+          </h1>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+
+          {/* Matchdays */}
           <motion.a initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             href="/admin/matchdays"
-            className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-6 hover:border-[#ff751f]/40 hover:shadow-[0_0_30px_rgba(255,117,31,0.07)] transition-all group">
-            <div className="w-10 h-10 rounded-xl bg-[rgba(255,117,31,0.1)] border border-[rgba(255,117,31,0.2)] flex items-center justify-center text-xl mb-4">🏀</div>
-            <div className="text-lg font-black mb-1 group-hover:text-[#ff751f] transition-colors">Αγωνιστικές</div>
-            <div className="text-sm text-gray-500">Δημιούργησε αγωνιστικές και πρόσθεσε ματς με HCP/OU</div>
+            className="border-2 border-white/10 bg-black p-6 hover:border-[#ff751f]/50 transition-all group overflow-hidden">
+            <div className="h-0.5 bg-[#ff751f] scale-x-0 group-hover:scale-x-100 transition-transform origin-left mb-4"></div>
+            <div className="text-4xl mb-4">🏀</div>
+            <div className="text-lg font-black uppercase group-hover:text-[#ff751f] transition-colors mb-1">Αγωνιστικές</div>
+            <div className="text-xs text-gray-600 font-black uppercase tracking-wide" style={{ fontFamily: "Arial, sans-serif" }}>
+              Δημιούργησε αγωνιστικές · HCP · O/U
+            </div>
+            <div className="mt-4 text-[10px] text-[#ff751f] font-black uppercase tracking-widest">
+              Διαχείριση →
+            </div>
           </motion.a>
 
+          {/* Challenge */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-6">
-            <div className="w-10 h-10 rounded-xl bg-[rgba(255,117,31,0.1)] border border-[rgba(255,117,31,0.2)] flex items-center justify-center text-xl mb-4">⚡</div>
-            <div className="text-lg font-black mb-1">Εβδομαδιαίο Challenge</div>
-            <div className="text-sm text-gray-500 mb-4">Ορισμός challenge και bonus πόντων</div>
-            <form onSubmit={handleSaveChallenge} className="flex flex-col gap-3">
-              <div>
-                <label className="text-xs text-gray-600 mb-1.5 block uppercase tracking-widest">Περιγραφή challenge</label>
-                <input type="text" value={challengeText} onChange={(e) => setChallengeText(e.target.value)}
-                  className="w-full bg-[#151515] border border-[#1e1e1e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-colors"
-                  placeholder="π.χ. Βρες 5 σωστά αποτελέσματα" required />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+            className="border-2 border-white/10 bg-black overflow-hidden">
+            <div className="bg-[#ff751f] px-4 py-2">
+              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">⚡ Weekly Challenge</span>
+            </div>
+            <div className="p-5">
+              <form onSubmit={handleSaveChallenge} className="flex flex-col gap-3">
                 <div>
-                  <label className="text-xs text-gray-600 mb-1.5 block uppercase tracking-widest">Σωστές προβλέψεις</label>
-                  <input type="number" value={challengeRequired} onChange={(e) => setChallengeRequired(e.target.value)}
-                    className="w-full bg-[#151515] border border-[#1e1e1e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-colors"
-                    placeholder="π.χ. 5" required />
+                  <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>
+                    Περιγραφή
+                  </label>
+                  <input type="text" value={challengeText} onChange={(e) => setChallengeText(e.target.value)}
+                    className="w-full bg-white/5 border-2 border-white/10 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-all"
+                    style={{ fontFamily: "Arial, sans-serif" }}
+                    placeholder="π.χ. Βρες 5 σωστά" required />
                 </div>
-                <div>
-                  <label className="text-xs text-gray-600 mb-1.5 block uppercase tracking-widest">Bonus πόντοι</label>
-                  <input type="number" value={challengeBonus} onChange={(e) => setChallengeBonus(e.target.value)}
-                    className="w-full bg-[#151515] border border-[#1e1e1e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-colors"
-                    placeholder="π.χ. 10" required />
+                <div className="grid grid-cols-2 gap-0">
+                  <div className="border-2 border-white/10 p-3">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>
+                      Σωστές
+                    </label>
+                    <input type="number" value={challengeRequired} onChange={(e) => setChallengeRequired(e.target.value)}
+                      className="w-full bg-transparent text-white text-lg font-black focus:outline-none tabular-nums"
+                      placeholder="5" required />
+                  </div>
+                  <div className="border-2 border-white/10 border-l-0 p-3">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>
+                      Bonus πτς
+                    </label>
+                    <input type="number" value={challengeBonus} onChange={(e) => setChallengeBonus(e.target.value)}
+                      className="w-full bg-transparent text-[#ff751f] text-lg font-black focus:outline-none tabular-nums"
+                      placeholder="10" required />
+                  </div>
                 </div>
-              </div>
-              {challengeRequired && challengeBonus && (
-                <div className="bg-[rgba(255,117,31,0.06)] border border-[rgba(255,117,31,0.15)] rounded-xl px-4 py-2.5 text-xs text-gray-400">
-                  ⚡ Παίκτες με <span className="text-[#ff751f] font-bold">{challengeRequired}+</span> σωστές προβλέψεις κερδίζουν <span className="text-[#ff751f] font-bold">+{challengeBonus} πτς</span>
+
+                {challengeRequired && challengeBonus && (
+                  <div className="border-l-4 border-[#ff751f] pl-3 py-1">
+                    <span className="text-[10px] font-black text-gray-400" style={{ fontFamily: "Arial, sans-serif" }}>
+                      {challengeRequired}+ σωστές → <span className="text-[#ff751f]">+{challengeBonus} πτς</span>
+                    </span>
+                  </div>
+                )}
+
+                <div className="border-l-4 border-green-500 pl-3 py-1">
+                  <span className="text-[10px] font-black text-gray-400" style={{ fontFamily: "Arial, sans-serif" }}>
+                    100% ακρίβεια → <span className="text-green-400">+10 πτς αυτόματα</span>
+                  </span>
                 </div>
-              )}
-              <div className="bg-[rgba(74,222,128,0.06)] border border-[rgba(74,222,128,0.15)] rounded-xl px-4 py-2.5 text-xs text-gray-400">
-                🎯 100% ακρίβεια → αυτόματο bonus <span className="text-green-400 font-bold">+10 πτς</span>
-              </div>
-              <button type="submit" disabled={savingChallenge}
-                className={`font-black px-6 py-2.5 rounded-xl text-sm transition-all disabled:opacity-50 ${
-                  challengeSaved
-                    ? "bg-green-500 text-black"
-                    : "bg-[#ff751f] text-black hover:bg-[#e6671a] shadow-[0_0_20px_rgba(255,117,31,0.2)]"
-                }`}>
-                {challengeSaved ? "✓ Αποθηκεύτηκε!" : savingChallenge ? "Αποθήκευση..." : "Αποθήκευσε"}
-              </button>
-            </form>
+
+                <button type="submit" disabled={savingChallenge}
+                  className={`font-black px-6 py-3 text-xs uppercase tracking-widest transition-all disabled:opacity-50 border-2 ${
+                    challengeSaved
+                      ? "bg-green-500 border-green-500 text-black"
+                      : "bg-[#ff751f] border-[#ff751f] text-black hover:bg-white hover:border-white"
+                  }`}>
+                  {challengeSaved ? "✓ Αποθηκεύτηκε!" : savingChallenge ? "..." : "Αποθήκευσε"}
+                </button>
+              </form>
+            </div>
           </motion.div>
         </div>
 
+        {/* Quick links */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-6">
-          <div className="text-xs text-gray-600 uppercase tracking-widest mb-4 font-bold">Γρήγορες συνδέσεις</div>
-          <div className="flex gap-3 flex-wrap">
+          className="border-2 border-white/10 bg-black overflow-hidden">
+          <div className="bg-white px-4 py-2">
+            <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Quick Links</span>
+          </div>
+          <div className="p-4 flex gap-0 flex-wrap">
             {[
               { href: "/leaderboard", label: "Κατάταξη" },
               { href: "/cup", label: "Κύπελλο" },
               { href: "/", label: "Homepage" },
-            ].map(link => (
+            ].map((link, i) => (
               <a key={link.href} href={link.href}
-                className="text-xs border border-[#1e1e1e] text-gray-400 px-4 py-2 rounded-xl hover:border-[#ff751f] hover:text-[#ff751f] transition-all">
+                className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-gray-500 border-r border-white/10 last:border-r-0 hover:text-[#ff751f] hover:bg-white/5 transition-all">
                 {link.label} →
               </a>
             ))}

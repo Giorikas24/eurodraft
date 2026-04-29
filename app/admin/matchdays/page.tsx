@@ -12,6 +12,7 @@ const ADMIN_EMAIL = "georgelipas05@gmail.com";
 interface Matchday {
   id: string;
   number: number;
+  name?: string;
   deadline: any;
   status: string;
 }
@@ -59,10 +60,9 @@ export default function MatchdaysPage() {
   };
 
   const handleDelete = async (m: Matchday) => {
-    if (!confirm(`Σίγουρα θέλεις να διαγράψεις την Αγωνιστική #${m.number}; Αυτό θα διαγράψει και όλα τα ματς της.`)) return;
+    if (!confirm(`Σίγουρα θέλεις να διαγράψεις την Αγωνιστική #${m.number};`)) return;
     setDeleting(m.id);
     try {
-      // Delete all games first
       const gamesSnap = await getDocs(collection(db, "matchdays", m.id, "games"));
       for (const gameDoc of gamesSnap.docs) {
         await deleteDoc(doc(db, "matchdays", m.id, "games", gameDoc.id));
@@ -79,79 +79,116 @@ export default function MatchdaysPage() {
     return d.toLocaleString("el-GR", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
-  if (loading) return <div className="min-h-screen bg-[#080808] flex items-center justify-center text-white">Φόρτωση...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-[#ff751f] border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
   if (!user || user.email !== ADMIN_EMAIL) return null;
 
   return (
-    <main className="min-h-screen bg-[#080808] text-white">
-      <nav className="bg-black border-b border-[#1a1a1a] h-16 flex items-center px-10 gap-4">
-        <a href="/" className="font-bold text-2xl tracking-widest">
-          <span className="text-[#ff751f]">EURO</span>
-          <span className="text-white">DRAFT</span>
+    <main className="min-h-screen bg-[#0a0a0a] text-white" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
+      <nav className="bg-black border-b-2 border-[#ff751f] h-14 flex items-center px-10 gap-0">
+        <a href="/" className="flex items-center gap-0 mr-4">
+          <div className="bg-[#ff751f] px-2.5 py-1.5">
+            <span className="text-black font-black text-sm tracking-tighter">COURT</span>
+          </div>
+          <div className="bg-white px-2.5 py-1.5">
+            <span className="text-black font-black text-sm tracking-tighter">PROPHET</span>
+          </div>
         </a>
-        <span className="text-xs text-gray-500 border border-[#333] px-2 py-1 rounded">ADMIN</span>
-        <a href="/admin" className="text-xs text-gray-500 hover:text-white ml-4">← Πίσω</a>
+        <div className="bg-white/10 px-3 py-1.5 border border-white/20 mr-3">
+          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Admin</span>
+        </div>
+        <a href="/admin" className="text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-[#ff751f] transition-colors">
+          ← Πίσω
+        </a>
       </nav>
 
-      <div className="max-w-2xl mx-auto px-10 py-12">
-        <div className="flex justify-between items-center mb-8">
+      <div className="max-w-2xl mx-auto px-10 py-10">
+
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-2xl font-black">Αγωνιστικές</h1>
-            <p className="text-xs text-gray-600 mt-1">{matchdays.length} αγωνιστικές συνολικά</p>
+            <div className="flex items-center gap-0 mb-3">
+              <div className="bg-[#ff751f] px-3 py-1">
+                <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Admin</span>
+              </div>
+              <div className="bg-white px-3 py-1">
+                <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Matchdays</span>
+              </div>
+            </div>
+            <h1 className="text-4xl font-black uppercase leading-none tracking-tighter">
+              ΑΓΩΝΙ<span className="text-[#ff751f]">ΣΤΙΚΕΣ</span>
+            </h1>
+            <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest mt-2" style={{ fontFamily: "Arial, sans-serif" }}>
+              {matchdays.length} αγωνιστικές συνολικά
+            </p>
           </div>
           <button onClick={() => setShowForm(!showForm)}
-            className="bg-[#ff751f] text-black font-black px-5 py-2.5 rounded-xl text-sm hover:bg-[#e6671a] transition-all shadow-[0_0_20px_rgba(255,117,31,0.2)]">
-            + Νέα αγωνιστική
+            className="bg-[#ff751f] text-black font-black px-5 py-3 text-xs uppercase tracking-widest hover:bg-white transition-all border-2 border-[#ff751f]">
+            + Νέα
           </button>
         </div>
 
+        {/* Create form */}
         {showForm && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-[#0f0f0f] border border-[#ff751f]/30 rounded-2xl p-6 mb-6">
-            <h2 className="text-base font-black mb-1">Αγωνιστική #{nextNumber}</h2>
-            <p className="text-xs text-gray-500 mb-4">Επέλεξε το deadline — συνήθως λίγο πριν το πρώτο ματς.</p>
-            <form onSubmit={handleCreate} className="flex gap-3 items-end">
-              <div className="flex-1">
-                <label className="text-xs text-gray-600 mb-1.5 block uppercase tracking-widest">Deadline</label>
-                <input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full bg-[#151515] border border-[#1e1e1e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f]"
-                  required />
-              </div>
-              <button type="submit" disabled={saving}
-                className="bg-[#ff751f] text-black font-black px-6 py-2.5 rounded-xl text-sm hover:bg-[#e6671a] disabled:opacity-50">
-                {saving ? "..." : "Δημιούργησε"}
-              </button>
-              <button type="button" onClick={() => setShowForm(false)}
-                className="border border-[#333] text-gray-400 px-4 py-2.5 rounded-xl text-sm hover:bg-[#1a1a1a]">
-                Ακύρωση
-              </button>
-            </form>
+            className="border-2 border-[#ff751f]/50 bg-black mb-6 overflow-hidden">
+            <div className="bg-[#ff751f] px-4 py-2">
+              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Νέα Αγωνιστική #{nextNumber}</span>
+            </div>
+            <div className="p-5">
+              <form onSubmit={handleCreate} className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Deadline</label>
+                  <input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)}
+                    className="w-full bg-white/5 border-2 border-white/10 px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-all"
+                    required />
+                </div>
+                <button type="submit" disabled={saving}
+                  className="bg-[#ff751f] text-black font-black px-5 py-2.5 text-xs uppercase tracking-widest hover:bg-white disabled:opacity-50 transition-all border-2 border-[#ff751f]">
+                  {saving ? "..." : "Δημιούργησε"}
+                </button>
+                <button type="button" onClick={() => setShowForm(false)}
+                  className="border-2 border-white/20 text-gray-400 px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:border-white hover:text-white transition-all">
+                  ✕
+                </button>
+              </form>
+            </div>
           </motion.div>
         )}
 
-        <div className="flex flex-col gap-3">
+        {/* List */}
+        <div className="flex flex-col gap-2">
           {matchdays.length === 0 && (
-            <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-8 text-center text-gray-600 text-sm">
-              Δεν υπάρχουν αγωνιστικές ακόμα.
+            <div className="border-2 border-white/10 bg-black p-10 text-center">
+              <div className="text-gray-600 text-[10px] uppercase font-black tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>
+                Δεν υπάρχουν αγωνιστικές ακόμα.
+              </div>
             </div>
           )}
           {matchdays.map((m) => (
             <motion.div key={m.id} layout
-              className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl px-5 py-4 flex justify-between items-center hover:border-[#2a2a2a] transition-all">
-              <a href={"/admin/matchdays/" + m.id} className="flex-1">
-                <div className="font-black">Αγωνιστική #{m.number}</div>
-                <div className="text-xs text-gray-600 mt-1">Deadline: {formatDate(m.deadline)}</div>
+              className="border-2 border-white/10 bg-black flex items-center overflow-hidden hover:border-white/20 transition-all group">
+              <a href={"/admin/matchdays/" + m.id} className="flex-1 p-4">
+                <div className="text-sm font-black uppercase">{m.name || `Αγωνιστική #${m.number}`}</div>
+                <div className="text-[10px] text-gray-600 mt-1 font-black uppercase tracking-wide" style={{ fontFamily: "Arial, sans-serif" }}>
+                  Deadline: {formatDate(m.deadline)}
+                </div>
               </a>
-              <div className="flex items-center gap-2">
-                <span className={`text-xs px-2.5 py-1 rounded-lg font-bold ${m.status === "open" ? "bg-green-900/50 text-green-400" : "bg-[#222] text-gray-500"}`}>
-                  {m.status === "open" ? "Ανοιχτή" : "Κλειστή"}
-                </span>
+              <div className="flex items-stretch h-full divide-x divide-white/10">
+                <div className={`px-3 py-4 flex items-center ${m.status === "open" ? "bg-green-500/10" : "bg-white/5"}`}>
+                  <span className={`text-[9px] font-black uppercase tracking-widest ${m.status === "open" ? "text-green-400" : "text-gray-600"}`}>
+                    {m.status === "open" ? "● Ανοιχτή" : "Κλειστή"}
+                  </span>
+                </div>
                 <a href={"/admin/matchdays/" + m.id}
-                  className="text-xs text-[#ff751f] border border-[rgba(255,117,31,0.2)] px-2.5 py-1 rounded-lg hover:bg-[rgba(255,117,31,0.1)] transition-all">
+                  className="px-4 py-4 flex items-center text-[10px] font-black uppercase tracking-widest text-[#ff751f] hover:bg-[#ff751f] hover:text-black transition-all">
                   Διαχείριση →
                 </a>
                 <button onClick={() => handleDelete(m)} disabled={deleting === m.id}
-                  className="text-xs border border-[#333] text-gray-600 px-2.5 py-1 rounded-lg hover:border-red-500 hover:text-red-400 transition-all disabled:opacity-50">
+                  className="px-4 py-4 text-[10px] font-black text-gray-600 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50">
                   {deleting === m.id ? "..." : "✕"}
                 </button>
               </div>

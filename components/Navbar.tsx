@@ -35,40 +35,37 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 bg-[#050505]/95 backdrop-blur-md border-b border-white/[0.04]">
+      <nav className="sticky top-0 z-50 bg-black border-b-2 border-[#ff751f]" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
         <div className="w-full max-w-7xl mx-auto px-5 md:px-10 h-14 flex items-center justify-between">
 
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2.5 group">
-            <div className="w-7 h-7 rounded-lg bg-[#ff751f] flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_rgba(255,117,31,0.4)] group-hover:shadow-[0_0_20px_rgba(255,117,31,0.6)] transition-all">
-              <span className="text-black font-black text-xs">CP</span>
+          <a href="/" className="flex items-center gap-0 group">
+            <div className="bg-[#ff751f] px-2.5 py-1.5 flex items-center justify-center">
+              <span className="text-black font-black text-sm tracking-tighter">COURT</span>
             </div>
-            <span className="font-black text-white tracking-tight text-base">
-              Court<span className="text-[#ff751f]">Prophet</span>
-            </span>
+            <div className="bg-white px-2.5 py-1.5 flex items-center justify-center">
+              <span className="text-black font-black text-sm tracking-tighter">PROPHET</span>
+            </div>
           </a>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-0">
             {navLinks.map(link => (
               <a key={link.href} href={link.href}
-                className={`relative px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                className={`px-4 py-4 text-[10px] font-black uppercase tracking-widest transition-all border-r border-white/10 ${
                   isActive(link.href)
-                    ? "text-white bg-white/[0.06]"
-                    : "text-gray-500 hover:text-gray-200 hover:bg-white/[0.04]"
+                    ? "text-black bg-[#ff751f]"
+                    : "text-gray-500 hover:text-white hover:bg-white/5"
                 }`}>
-                {isActive(link.href) && (
-                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#ff751f]"></span>
-                )}
                 {link.label}
               </a>
             ))}
             {user?.email === ADMIN_EMAIL && (
               <a href="/admin"
-                className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                className={`px-4 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${
                   pathname.startsWith("/admin")
-                    ? "text-[#ff751f] bg-[rgba(255,117,31,0.08)]"
-                    : "text-gray-500 hover:text-gray-200 hover:bg-white/[0.04]"
+                    ? "text-black bg-[#ff751f]"
+                    : "text-gray-500 hover:text-white hover:bg-white/5"
                 }`}>
                 Admin
               </a>
@@ -76,30 +73,30 @@ export default function Navbar() {
           </div>
 
           {/* Desktop auth */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-0">
             {loading ? (
-              <div className="w-7 h-7 rounded-full bg-white/5 animate-pulse"></div>
+              <div className="w-8 h-8 bg-white/5 animate-pulse"></div>
             ) : user ? (
-              <div className="flex items-center gap-3">
-                <a href="/profile" className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/[0.04] transition-all">
-                  <div className="w-6 h-6 rounded-full bg-[#ff751f] flex items-center justify-center text-black font-black text-[10px]">
+              <div className="flex items-center gap-0">
+                <a href="/profile" className="flex items-center gap-2 px-4 py-3 border-l border-white/10 hover:bg-white/5 transition-all">
+                  <div className="w-6 h-6 bg-[#ff751f] flex items-center justify-center text-black font-black text-[10px]">
                     {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
                   </div>
-                  <span className="text-xs text-gray-300 font-medium">{user.displayName || user.email?.split("@")[0]}</span>
+                  <span className="text-[10px] text-white font-black uppercase tracking-wider">{user.displayName || user.email?.split("@")[0]}</span>
                 </a>
                 <button onClick={handleSignOut}
-                  className="text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:text-gray-300 hover:bg-white/[0.04] transition-all border border-white/[0.06]">
+                  className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600 border-l border-white/10 hover:text-white hover:bg-white/5 transition-all">
                   Έξοδος
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-0">
                 <a href="/auth/login"
-                  className="text-xs px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-all">
+                  className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-400 border-l border-white/10 hover:text-white hover:bg-white/5 transition-all">
                   Σύνδεση
                 </a>
                 <a href="/auth/register"
-                  className="text-xs px-4 py-2 rounded-lg bg-[#ff751f] text-black font-black hover:bg-[#ff8534] transition-all shadow-[0_0_16px_rgba(255,117,31,0.3)]">
+                  className="px-4 py-3 text-[10px] font-black uppercase tracking-widest bg-[#ff751f] text-black hover:bg-white transition-all">
                   Εγγραφή
                 </a>
               </div>
@@ -109,22 +106,22 @@ export default function Navbar() {
           {/* Mobile */}
           <div className="flex md:hidden items-center gap-3">
             {user && (
-              <div className="w-7 h-7 rounded-full bg-[#ff751f] flex items-center justify-center text-black font-black text-[10px]">
+              <div className="w-7 h-7 bg-[#ff751f] flex items-center justify-center text-black font-black text-[10px]">
                 {user.displayName?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
               </div>
             )}
             <button onClick={() => setMenuOpen(!menuOpen)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] transition-all">
+              className="w-8 h-8 flex items-center justify-center border border-white/20 text-white hover:bg-white/10 transition-all">
               {menuOpen ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
               ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="3" y1="7" x2="21" y2="7"></line>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
                   <line x1="3" y1="12" x2="21" y2="12"></line>
-                  <line x1="9" y1="17" x2="21" y2="17"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
                 </svg>
               )}
             </button>
@@ -140,53 +137,55 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
-            className="md:hidden fixed top-14 left-0 right-0 z-40 bg-[#070707]/98 backdrop-blur-xl border-b border-white/[0.04]">
-            <div className="px-4 py-3 flex flex-col gap-0.5">
+            className="md:hidden fixed top-14 left-0 right-0 z-40 bg-black border-b-2 border-[#ff751f]"
+            style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}
+          >
+            <div className="flex flex-col">
               {navLinks.map(link => (
                 <a key={link.href} href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className={`flex items-center justify-between py-3 px-3 rounded-xl text-sm transition-all ${
+                  className={`flex items-center justify-between py-4 px-5 border-b border-white/10 text-xs font-black uppercase tracking-widest transition-all ${
                     isActive(link.href)
-                      ? "text-white bg-white/[0.06] font-medium"
-                      : "text-gray-500"
+                      ? "bg-[#ff751f] text-black"
+                      : "text-gray-500 hover:text-white hover:bg-white/5"
                   }`}>
                   {link.label}
-                  {isActive(link.href) && <span className="w-1.5 h-1.5 rounded-full bg-[#ff751f]"></span>}
+                  {isActive(link.href) && <span className="text-black">▶</span>}
                 </a>
               ))}
               {user?.email === ADMIN_EMAIL && (
                 <a href="/admin" onClick={() => setMenuOpen(false)}
-                  className={`py-3 px-3 rounded-xl text-sm transition-all ${
-                    pathname.startsWith("/admin") ? "text-[#ff751f] bg-[rgba(255,117,31,0.06)] font-medium" : "text-gray-500"
+                  className={`py-4 px-5 border-b border-white/10 text-xs font-black uppercase tracking-widest transition-all ${
+                    pathname.startsWith("/admin") ? "bg-[#ff751f] text-black" : "text-gray-500"
                   }`}>
                   Admin
                 </a>
               )}
-              <div className="border-t border-white/[0.04] mt-2 pt-3 flex flex-col gap-2">
+              <div className="flex flex-col">
                 {user ? (
                   <>
-                    <div className="flex items-center gap-3 px-3 py-2">
-                      <div className="w-8 h-8 rounded-full bg-[#ff751f] flex items-center justify-center text-black font-black text-xs">
+                    <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
+                      <div className="w-8 h-8 bg-[#ff751f] flex items-center justify-center text-black font-black text-xs">
                         {user.displayName?.[0]?.toUpperCase() || "?"}
                       </div>
-                      <span className="text-sm text-white font-medium">{user.displayName || user.email?.split("@")[0]}</span>
+                      <span className="text-xs text-white font-black uppercase tracking-wider">{user.displayName || user.email?.split("@")[0]}</span>
                     </div>
                     <button onClick={handleSignOut}
-                      className="text-sm py-3 px-3 rounded-xl border border-white/[0.06] text-gray-500 text-left hover:text-gray-300 transition-all">
+                      className="py-4 px-5 text-xs font-black uppercase tracking-widest text-gray-600 text-left hover:text-white hover:bg-white/5 transition-all">
                       Έξοδος
                     </button>
                   </>
                 ) : (
-                  <>
+                  <div className="flex">
                     <a href="/auth/login" onClick={() => setMenuOpen(false)}
-                      className="text-sm py-3 px-3 rounded-xl border border-white/[0.06] text-white text-center">
+                      className="flex-1 text-center py-4 text-xs font-black uppercase tracking-widest border-r border-white/10 text-white hover:bg-white/5 transition-all">
                       Σύνδεση
                     </a>
                     <a href="/auth/register" onClick={() => setMenuOpen(false)}
-                      className="text-sm py-3 px-3 rounded-xl bg-[#ff751f] text-black font-black text-center">
+                      className="flex-1 text-center py-4 text-xs font-black uppercase tracking-widest bg-[#ff751f] text-black hover:bg-white transition-all">
                       Εγγραφή
                     </a>
-                  </>
+                  </div>
                 )}
               </div>
             </div>

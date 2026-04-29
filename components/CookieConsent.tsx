@@ -11,15 +11,8 @@ export default function CookieConsent() {
     if (!consent) setVisible(true);
   }, []);
 
-  const accept = () => {
-    localStorage.setItem("cookie_consent", "accepted");
-    setVisible(false);
-  };
-
-  const decline = () => {
-    localStorage.setItem("cookie_consent", "declined");
-    setVisible(false);
-  };
+  const accept = () => { localStorage.setItem("cookie_consent", "accepted"); setVisible(false); };
+  const decline = () => { localStorage.setItem("cookie_consent", "declined"); setVisible(false); };
 
   return (
     <AnimatePresence>
@@ -29,30 +22,31 @@ export default function CookieConsent() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 100 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:max-w-md z-50"
+          className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:max-w-sm z-50"
+          style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}
         >
-          <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-2xl p-5 shadow-[0_0_60px_rgba(0,0,0,0.8)]">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-[rgba(255,117,31,0.1)] border border-[rgba(255,117,31,0.2)] flex items-center justify-center text-lg flex-shrink-0">🍪</div>
-              <div>
-                <div className="text-sm font-black text-white mb-1">Χρησιμοποιούμε Cookies</div>
-                <div className="text-xs text-gray-500 leading-relaxed">
-                  Χρησιμοποιούμε cookies για να βελτιώσουμε την εμπειρία σου. Διάβασε την{" "}
-                  <a href="/privacy" className="text-[#ff751f] hover:underline">Πολιτική Απορρήτου</a>{" "}
-                  και τους{" "}
-                  <a href="/terms" className="text-[#ff751f] hover:underline">Όρους Χρήσης</a>.
-                </div>
-              </div>
+          <div className="bg-black border-2 border-[#ff751f]/40 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden">
+            <div className="bg-[#ff751f] px-4 py-2 flex items-center gap-2">
+              <span className="text-lg">🍪</span>
+              <span className="text-black text-[9px] font-black uppercase tracking-[4px]">Cookies</span>
             </div>
-            <div className="flex gap-2">
-              <button onClick={accept}
-                className="flex-1 bg-[#ff751f] text-black font-black py-2.5 rounded-xl text-sm hover:bg-[#e6671a] transition-all shadow-[0_0_20px_rgba(255,117,31,0.2)]">
-                Αποδοχή
-              </button>
-              <button onClick={decline}
-                className="flex-1 border border-[#2a2a2a] text-gray-400 font-bold py-2.5 rounded-xl text-sm hover:bg-[#151515] transition-all">
-                Απόρριψη
-              </button>
+            <div className="p-4">
+              <p className="text-xs text-gray-400 leading-relaxed mb-4" style={{ fontFamily: "Arial, sans-serif" }}>
+                Χρησιμοποιούμε cookies για να βελτιώσουμε την εμπειρία σου. Διάβασε την{" "}
+                <a href="/privacy" className="text-[#ff751f] hover:underline font-black">Πολιτική Απορρήτου</a>{" "}
+                και τους{" "}
+                <a href="/terms" className="text-[#ff751f] hover:underline font-black">Όρους Χρήσης</a>.
+              </p>
+              <div className="flex gap-0">
+                <button onClick={accept}
+                  className="flex-1 bg-[#ff751f] text-black font-black py-2.5 text-[10px] uppercase tracking-widest hover:bg-white transition-all border-2 border-[#ff751f]">
+                  Αποδοχή
+                </button>
+                <button onClick={decline}
+                  className="flex-1 border-2 border-white/10 text-gray-500 font-black py-2.5 text-[10px] uppercase tracking-widest hover:border-white/30 hover:text-white transition-all">
+                  Απόρριψη
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>

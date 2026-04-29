@@ -2,31 +2,47 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="bg-black border-t border-[#1a1a1a] mt-auto">
+    <footer className="bg-black border-t-2 border-[#ff751f] mt-auto" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
       <div className="w-full max-w-7xl mx-auto px-5 md:px-10 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-6">
 
           {/* Logo + disclaimer */}
           <div className="max-w-lg">
-            <div className="font-bold text-xl tracking-widest mb-2">
-              <span className="text-[#ff751f]">COURT</span>
-              <span className="text-white">PROPHET</span>
+            <div className="flex items-center gap-0 mb-3">
+              <div className="bg-[#ff751f] px-2.5 py-1.5">
+                <span className="text-black font-black text-sm tracking-tighter">COURT</span>
+              </div>
+              <div className="bg-white px-2.5 py-1.5">
+                <span className="text-black font-black text-sm tracking-tighter">PROPHET</span>
+              </div>
             </div>
-            <p className="text-xs text-gray-600 leading-relaxed">
+            <p className="text-xs text-gray-600 leading-relaxed" style={{ fontFamily: "Arial, sans-serif" }}>
               Το CourtProphet δεν σχετίζεται με την EuroLeague Basketball ή οποιαδήποτε επίσημη αθλητική οργάνωση. Είναι μια ανεξάρτητη πλατφόρμα προβλέψεων αποκλειστικά για ψυχαγωγικούς σκοπούς. Δεν υπάρχει χρηματικό στοίχημα.
             </p>
           </div>
 
           {/* Links */}
-          <div className="flex flex-col gap-2 text-xs text-gray-600">
-            <Link href="/privacy" className="hover:text-[#ff751f] transition-colors">Πολιτική Απορρήτου</Link>
-            <Link href="/terms" className="hover:text-[#ff751f] transition-colors">Όροι Χρήσης</Link>
-            <Link href="/rules" className="hover:text-[#ff751f] transition-colors">Κανόνες</Link>
+          <div className="flex flex-col gap-0 border-2 border-white/10 overflow-hidden">
+            {[
+              { href: "/privacy", label: "Πολιτική Απορρήτου" },
+              { href: "/terms", label: "Όροι Χρήσης" },
+              { href: "/rules", label: "Κανόνες" },
+            ].map((link, i) => (
+              <Link key={link.href} href={link.href}
+                className="px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-gray-600 border-b border-white/10 last:border-b-0 hover:bg-[#ff751f] hover:text-black transition-all">
+                {link.label} →
+              </Link>
+            ))}
           </div>
         </div>
 
-        <div className="border-t border-[#1a1a1a] mt-6 pt-6 text-center text-xs text-gray-700">
-          © {new Date().getFullYear()} CourtProphet. Όλα τα δικαιώματα διατηρούνται.
+        <div className="border-t border-white/10 mt-6 pt-4 flex items-center justify-between">
+          <span className="text-[9px] text-gray-700 font-black uppercase tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>
+            © {new Date().getFullYear()} CourtProphet
+          </span>
+          <span className="text-[9px] text-gray-700 font-black uppercase tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>
+            All rights reserved
+          </span>
         </div>
       </div>
     </footer>

@@ -1,61 +1,49 @@
 import Navbar from "@/components/Navbar";
 
 export default function TermsPage() {
+  const sections = [
+    { title: "01 — Αποδοχή Όρων", content: "Χρησιμοποιώντας το CourtProphet αποδέχεσαι πλήρως τους παρόντες όρους χρήσης. Αν δεν συμφωνείς, παρακαλούμε να μην χρησιμοποιείς την πλατφόρμα." },
+    { title: "02 — Περιγραφή Υπηρεσίας", content: "Το CourtProphet είναι μια δωρεάν πλατφόρμα προβλέψεων για τα παιχνίδια της Euroleague. Δεν υπάρχει χρηματικό στοίχημα — οι πόντοι είναι αποκλειστικά για διασκέδαση και ανταγωνισμό." },
+    { title: "03 — Εγγραφή Χρήστη", content: "Για να χρησιμοποιήσεις πλήρως την πλατφόρμα πρέπει να εγγραφείς. Είσαι υπεύθυνος για την ασφάλεια του λογαριασμού σου και για κάθε δραστηριότητα που γίνεται μέσω αυτού." },
+    { title: "04 — Κανόνες Συμπεριφοράς", content: "Απαγορεύεται η χρήση προσβλητικής γλώσσας στο chat, η παραπλάνηση άλλων χρηστών και οποιαδήποτε προσπάθεια χειραγώγησης του συστήματος βαθμολογίας. Παραβιάσεις οδηγούν σε διαγραφή λογαριασμού." },
+    { title: "05 — Πνευματικά Δικαιώματα", content: "Το περιεχόμενο, το λογότυπο και ο σχεδιασμός του CourtProphet ανήκουν αποκλειστικά στους δημιουργούς. Απαγορεύεται η αναπαραγωγή χωρίς γραπτή άδεια." },
+    { title: "06 — Αποποίηση Ευθύνης", content: "Το CourtProphet παρέχεται «ως έχει» χωρίς εγγυήσεις. Δεν φέρουμε ευθύνη για τυχόν διακοπές της υπηρεσίας ή απώλεια δεδομένων. Το CourtProphet δεν σχετίζεται με την EuroLeague Basketball ή οποιαδήποτε επίσημη αθλητική οργάνωση." },
+    { title: "07 — Τροποποιήσεις", content: "Διατηρούμε το δικαίωμα να τροποποιούμε τους παρόντες όρους οποιαδήποτε στιγμή. Οι αλλαγές τίθενται σε ισχύ άμεσα μετά τη δημοσίευσή τους." },
+    { title: "08 — Επικοινωνία", content: "Για ερωτήσεις σχετικά με τους όρους χρήσης, επικοινώνησε μαζί μας στο courtprophet@gmail.com." },
+  ];
+
   return (
-    <main className="min-h-screen bg-[#080808] text-white">
+    <main className="min-h-screen bg-[#0a0a0a] text-white" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
       <Navbar />
-      <div className="relative overflow-hidden border-b border-[#1a1a1a]">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[-50px] left-1/2 -translate-x-1/2 w-[500px] h-[250px] bg-[#ff751f] opacity-[0.05] blur-[100px] rounded-full"></div>
-        </div>
-        <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-10 relative">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-[#ff751f] animate-pulse shadow-[0_0_8px_rgba(255,117,31,0.8)]"></div>
-            <span className="text-[#ff751f] text-xs tracking-[4px] font-medium">COURTPROPHET</span>
+
+      <div className="bg-black border-b-2 border-[#ff751f]">
+        <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-8">
+          <div className="flex items-center gap-0 mb-3">
+            <div className="bg-[#ff751f] px-3 py-1">
+              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">CourtProphet</span>
+            </div>
+            <div className="bg-white px-3 py-1">
+              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Legal</span>
+            </div>
           </div>
-          <h1 className="text-3xl font-black tracking-tight">Όροι Χρήσης</h1>
-          <p className="text-gray-600 text-sm mt-2">Τελευταία ενημέρωση: Απρίλιος 2026</p>
+          <h1 className="text-4xl md:text-6xl font-black uppercase leading-none tracking-tighter">
+            ΟΡΟΙ <span className="text-[#ff751f]">ΧΡΗΣΗΣ</span>
+          </h1>
+          <p className="text-[10px] text-gray-600 uppercase tracking-widest mt-2 font-black" style={{ fontFamily: "Arial, sans-serif" }}>
+            Τελευταία ενημέρωση: Απρίλιος 2026
+          </p>
         </div>
       </div>
 
-      <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-8 flex flex-col gap-6">
-        {[
-          {
-            title: "1. Αποδοχή Όρων",
-            content: "Χρησιμοποιώντας το CourtProphet αποδέχεσαι πλήρως τους παρόντες όρους χρήσης. Αν δεν συμφωνείς, παρακαλούμε να μην χρησιμοποιείς την πλατφόρμα.",
-          },
-          {
-            title: "2. Περιγραφή Υπηρεσίας",
-            content: "Το CourtProphet είναι μια δωρεάν πλατφόρμα προβλέψεων για τα παιχνίδια της Euroleague. Δεν υπάρχει χρηματικό στοίχημα — οι πόντοι είναι αποκλειστικά για διασκέδαση και ανταγωνισμό.",
-          },
-          {
-            title: "3. Εγγραφή Χρήστη",
-            content: "Για να χρησιμοποιήσεις πλήρως την πλατφόρμα πρέπει να εγγραφείς. Είσαι υπεύθυνος για την ασφάλεια του λογαριασμού σου και για κάθε δραστηριότητα που γίνεται μέσω αυτού.",
-          },
-          {
-            title: "4. Κανόνες Συμπεριφοράς",
-            content: "Απαγορεύεται η χρήση προσβλητικής γλώσσας στο chat, η παραπλάνηση άλλων χρηστών και οποιαδήποτε προσπάθεια χειραγώγησης του συστήματος βαθμολογίας. Παραβιάσεις οδηγούν σε διαγραφή λογαριασμού.",
-          },
-          {
-            title: "5. Πνευματικά Δικαιώματα",
-            content: "Το περιεχόμενο, το λογότυπο και ο σχεδιασμός του CourtProphet ανήκουν αποκλειστικά στους δημιουργούς. Απαγορεύεται η αναπαραγωγή χωρίς γραπτή άδεια.",
-          },
-          {
-            title: "6. Αποποίηση Ευθύνης",
-            content: "Το CourtProphet παρέχεται «ως έχει» χωρίς εγγυήσεις. Δεν φέρουμε ευθύνη για τυχόν διακοπές της υπηρεσίας ή απώλεια δεδομένων. Το CourtProphet δεν σχετίζεται με την EuroLeague Basketball ή οποιαδήποτε επίσημη αθλητική οργάνωση.",
-          },
-          {
-            title: "7. Τροποποιήσεις",
-            content: "Διατηρούμε το δικαίωμα να τροποποιούμε τους παρόντες όρους οποιαδήποτε στιγμή. Οι αλλαγές τίθενται σε ισχύ άμεσα μετά τη δημοσίευσή τους.",
-          },
-          {
-            title: "8. Επικοινωνία",
-            content: "Για ερωτήσεις σχετικά με τους όρους χρήσης, επικοινώνησε μαζί μας στο courtprophet@gmail.com.",
-          },
-        ].map((s, i) => (
-          <div key={i} className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-2xl p-5 hover:border-[#2a2a2a] transition-all">
-            <h2 className="text-base font-black text-[#ff751f] mb-3">{s.title}</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">{s.content}</p>
+      <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-8 flex flex-col gap-2">
+        {sections.map((s, i) => (
+          <div key={i} className="border-2 border-white/10 bg-black overflow-hidden">
+            <div className={`px-4 py-2 ${i % 2 === 0 ? "bg-white" : "bg-[#ff751f]"}`}>
+              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">{s.title}</span>
+            </div>
+            <div className="p-4">
+              <p className="text-gray-400 text-sm leading-relaxed" style={{ fontFamily: "Arial, sans-serif" }}>{s.content}</p>
+            </div>
           </div>
         ))}
       </div>

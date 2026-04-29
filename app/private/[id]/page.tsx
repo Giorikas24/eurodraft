@@ -30,7 +30,6 @@ export default function PrivateLeaguePage() {
   const router = useRouter();
   const params = useParams();
   const leagueId = params.id as string;
-
   const [league, setLeague] = useState<League | null>(null);
   const [members, setMembers] = useState<MemberStats[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
@@ -71,7 +70,7 @@ export default function PrivateLeaguePage() {
 
   if (loading || pageLoading) {
     return (
-      <main className="min-h-screen bg-[#0a0a0a] text-white">
+      <main className="min-h-screen bg-[#0a0a0a] text-white" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
         <Navbar />
         <div className="flex items-center justify-center h-96">
           <div className="w-6 h-6 border-2 border-[#ff751f] border-t-transparent rounded-full animate-spin"></div>
@@ -81,41 +80,66 @@ export default function PrivateLeaguePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white">
+    <main className="min-h-screen bg-[#0a0a0a] text-white" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
       <Navbar />
 
-      <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-8 md:py-12">
-        <a href="/private" className="text-xs text-gray-500 hover:text-white mb-6 inline-block">← Πίσω</a>
-
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#ff751f]"></div>
-          <span className="text-[#ff751f] text-xs tracking-[3px]">ΙΔΙΩΤΙΚΟ ΠΡΩΤΑΘΛΗΜΑ</span>
-        </div>
-
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="flex justify-between items-start mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-3xl font-medium truncate mr-4">{league?.name}</h1>
-          <div className="text-right flex-shrink-0">
-            <div className="text-xs text-gray-500 mb-1">Κωδικός</div>
-            <div className="font-mono font-medium text-[#ff751f] text-base md:text-xl tracking-widest">{league?.code}</div>
+      {/* Header */}
+      <div className="bg-black border-b-2 border-[#ff751f]">
+        <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-8">
+          <a href="/private" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:text-[#ff751f] transition-colors mb-4">
+            ← Πίσω
+          </a>
+          <div className="flex items-center gap-0 mb-3">
+            <div className="bg-[#ff751f] px-3 py-1">
+              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Ιδιωτικό</span>
+            </div>
+            <div className="bg-white px-3 py-1">
+              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Πρωτάθλημα</span>
+            </div>
           </div>
-        </motion.div>
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            className="flex items-end justify-between gap-4">
+            <h1 className="text-4xl md:text-6xl font-black uppercase leading-none tracking-tighter truncate flex-1">
+              {league?.name}
+            </h1>
+            <div className="flex-shrink-0 border-2 border-[#ff751f]/40 px-4 py-3 text-right">
+              <div className="text-[8px] text-gray-600 uppercase tracking-widest font-black mb-1" style={{ fontFamily: "Arial, sans-serif" }}>Κωδικός</div>
+              <div className="font-black text-[#ff751f] text-xl tracking-[6px]">{league?.code}</div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
 
+      <div className="w-full max-w-3xl mx-auto px-5 md:px-10 py-8">
+
+        {/* My rank */}
         {myRank && myRank > 0 && (
           <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
-            className="bg-[rgba(255,117,31,0.08)] border border-[rgba(255,117,31,0.2)] rounded-xl px-4 md:px-6 py-4 mb-5 flex justify-between items-center">
-            <span className="text-sm text-gray-400">Η θέση μου στο πρωτάθλημα</span>
-            <span className="text-xl md:text-2xl font-medium text-[#ff751f]">#{myRank}</span>
+            className="border-2 border-[#ff751f]/30 bg-[#ff751f]/5 px-5 py-4 mb-6 flex justify-between items-center">
+            <span className="text-xs font-black uppercase tracking-widest text-gray-400">Η θέση μου</span>
+            <span className="text-4xl font-black text-[#ff751f] tabular-nums">#{myRank}</span>
           </motion.div>
         )}
 
+        {/* Standings */}
+        <div className="flex items-center gap-0 mb-4">
+          <div className="bg-[#ff751f] px-4 py-2">
+            <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Κατάταξη</span>
+          </div>
+          <div className="bg-white/10 px-4 py-2">
+            <span className="text-white text-[9px] font-black tracking-[4px] uppercase">{members.length} παίκτες</span>
+          </div>
+        </div>
+
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="bg-[#111] rounded-xl border border-[#1e1e1e] overflow-hidden">
-          <div className="grid grid-cols-[32px_1fr_70px_60px] md:grid-cols-[40px_1fr_80px_80px] gap-2 md:gap-4 px-4 md:px-6 py-3 border-b border-[#1a1a1a]">
-            <div className="text-[10px] tracking-[2px] text-gray-600">#</div>
-            <div className="text-[10px] tracking-[2px] text-gray-600">ΠΑΙΚΤΗΣ</div>
-            <div className="text-[10px] tracking-[2px] text-gray-600 text-center">BADGE</div>
-            <div className="text-[10px] tracking-[2px] text-gray-600 text-right">ΠΤΣ</div>
+          className="border-2 border-white/10 overflow-hidden">
+
+          {/* Table header */}
+          <div className="grid grid-cols-[40px_1fr_80px_70px] gap-2 px-4 py-3 bg-black border-b border-white/10">
+            <div className="text-[9px] font-black uppercase tracking-widest text-gray-600">#</div>
+            <div className="text-[9px] font-black uppercase tracking-widest text-gray-600">Παίκτης</div>
+            <div className="text-[9px] font-black uppercase tracking-widest text-gray-600 text-center">Badge</div>
+            <div className="text-[9px] font-black uppercase tracking-widest text-gray-600 text-right">Πτς</div>
           </div>
 
           {members.map((member, index) => {
@@ -124,26 +148,35 @@ export default function PrivateLeaguePage() {
             const isMe = user?.uid === member.uid;
             return (
               <motion.div key={member.uid}
-                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`grid grid-cols-[32px_1fr_70px_60px] md:grid-cols-[40px_1fr_80px_80px] gap-2 md:gap-4 px-4 md:px-6 py-3 border-b border-[#1a1a1a] last:border-0 ${isMe ? "bg-[rgba(255,117,31,0.05)]" : ""}`}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.04 }}
+                className={`grid grid-cols-[40px_1fr_80px_70px] gap-2 px-4 py-3.5 border-b border-white/[0.06] last:border-0 transition-all ${
+                  isMe ? "bg-[#ff751f]" : "bg-black hover:bg-white/[0.02]"
+                }`}
               >
-                <div className={`text-sm font-medium self-center ${rank <= 3 ? "text-[#ff751f]" : "text-gray-500"}`}>
-                  {rank <= 3 ? ["🥇","🥈","🥉"][rank-1] : rank}
+                <div className={`text-xs font-black self-center tabular-nums ${
+                  isMe ? "text-black" : rank <= 3 ? "text-[#ff751f]" : "text-gray-600"
+                }`}>
+                  {rank <= 3 ? ["01","02","03"][rank-1] : `${rank < 10 ? "0" : ""}${rank}`}
                 </div>
-                <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                  <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#1a1a1a] border flex-shrink-0 flex items-center justify-center text-xs font-medium text-white ${isMe ? "border-[#ff751f]" : "border-[#2a2a2a]"}`}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-8 h-8 flex items-center justify-center text-xs font-black flex-shrink-0 ${
+                    isMe ? "bg-black text-[#ff751f]" : "bg-white/10 text-white"
+                  }`}>
                     {member.username?.[0]?.toUpperCase() || "?"}
                   </div>
-                  <span className="text-sm font-medium text-white truncate">
+                  <span className={`text-xs font-black uppercase truncate ${isMe ? "text-black" : "text-white"}`}>
                     {member.username}
-                    {isMe && <span className="text-xs text-[#ff751f] ml-1 hidden md:inline">(εσύ)</span>}
+                    {isMe && <span className="ml-1 text-[9px]">★ ΕΣΥ</span>}
                   </span>
                 </div>
                 <div className="flex items-center justify-center">
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${badge.class}`}>{badge.label}</span>
+                  <span className={`text-[8px] px-2 py-0.5 font-black uppercase ${badge.class}`}>{badge.label}</span>
                 </div>
-                <div className="text-sm font-medium text-white text-right self-center">{member.points}</div>
+                <div className={`text-sm font-black text-right self-center tabular-nums ${isMe ? "text-black" : "text-white"}`}>
+                  {member.points}
+                </div>
               </motion.div>
             );
           })}
