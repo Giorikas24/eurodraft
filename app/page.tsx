@@ -375,22 +375,18 @@ export default function Home() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 divide-x divide-white/10">
-                  <div className="p-4 border-b border-white/10">
-                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1" style={{ fontFamily: "Arial, sans-serif" }}>Παίκτες</div>
-                    <div className="text-4xl font-black text-white tabular-nums"><AnimatedNumber value={totalUsers} /></div>
-                  </div>
-                  <div className="p-4 border-b border-white/10">
-                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1" style={{ fontFamily: "Arial, sans-serif" }}>Αγωνιστική</div>
-                    <div className="text-2xl font-black text-[#ff751f] truncate">
-                      {matchday ? (matchday.name || `#${matchday.number}`) : "—"}
-                    </div>
-                  </div>
-                  <div className="p-4 col-span-2">
-                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-2" style={{ fontFamily: "Arial, sans-serif" }}>Deadline</div>
-                    {matchday ? <CountdownTimer deadline={matchday.deadline} /> : <span className="text-2xl font-black text-white">—</span>}
-                  </div>
-                </div>
+<div className="divide-y divide-white/10">
+  <div className="p-4">
+    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1" style={{ fontFamily: "Arial, sans-serif" }}>Αγωνιστική</div>
+    <div className="text-2xl font-black text-[#ff751f] truncate">
+      {matchday ? (matchday.name || `#${matchday.number}`) : "—"}
+    </div>
+  </div>
+  <div className="p-4">
+    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-2" style={{ fontFamily: "Arial, sans-serif" }}>Deadline</div>
+    {matchday ? <CountdownTimer deadline={matchday.deadline} /> : <span className="text-2xl font-black text-white">—</span>}
+  </div>
+</div>
 
                 {/* Progress */}
                 {user && matchday && (
