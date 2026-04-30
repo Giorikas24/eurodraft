@@ -39,14 +39,9 @@ export default function Navbar() {
         <div className="w-full max-w-7xl mx-auto px-5 md:px-10 h-14 flex items-center justify-between">
 
           {/* Logo */}
-          <a href="/" className="flex items-center gap-0 group">
-            <div className="bg-[#ff751f] px-2.5 py-1.5 flex items-center justify-center">
-              <span className="text-black font-black text-sm tracking-tighter">COURT</span>
-            </div>
-            <div className="bg-white px-2.5 py-1.5 flex items-center justify-center">
-              <span className="text-black font-black text-sm tracking-tighter">PROPHET</span>
-            </div>
-          </a>
+<a href="/" className="flex items-center group">
+  <img src="/logowhite.png" alt="CourtProphet" className="h-9 w-9 object-contain" />
+</a>
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-0">

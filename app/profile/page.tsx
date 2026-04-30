@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { updateProfile } from "firebase/auth";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
@@ -30,6 +31,12 @@ export default function ProfilePage() {
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [matchdayStats, setMatchdayStats] = useState<MatchdayStats[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameSuccess, setUsernameSuccess] = useState(false);
 
   useEffect(() => { if (user) fetchAll(); }, [user]);
 
@@ -75,6 +82,32 @@ export default function ProfilePage() {
     finally { setLoading(false); }
   };
 
+  const handleSaveUsername = async () => {
+    if (!user || !newUsername.trim()) return;
+    if (newUsername.trim().length < 3) { setUsernameError("Τουλάχιστον 3 χαρακτήρες."); return; }
+    if (newUsername.trim().length > 20) { setUsernameError("Μέχρι 20 χαρακτήρες."); return; }
+
+    setSavingUsername(true);
+    setUsernameError("");
+    try {
+      // Check if username already taken
+      const q = query(collection(db, "users"), where("username", "==", newUsername.trim()));
+      const snap = await getDocs(q);
+      if (!snap.empty && snap.docs[0].id !== user.uid) {
+        setUsernameError("Αυτό το username χρησιμοποιείται ήδη.");
+        return;
+      }
+
+      await updateDoc(doc(db, "users", user.uid), { username: newUsername.trim() });
+      await updateProfile(user, { displayName: newUsername.trim() });
+      setStats(prev => prev ? { ...prev, username: newUsername.trim() } : prev);
+      setUsernameSuccess(true);
+      setEditingUsername(false);
+      setTimeout(() => setUsernameSuccess(false), 3000);
+    } catch (err) { console.error(err); setUsernameError("Κάτι πήγε στραβά."); }
+    finally { setSavingUsername(false); }
+  };
+
   const badge = rank > 0 && totalUsers > 0 ? getBadge(rank, totalUsers) : null;
   const totalCorrect = matchdayStats.reduce((s, m) => s + m.correct, 0);
   const totalPredictions = matchdayStats.reduce((s, m) => s + m.total, 0);
@@ -114,15 +147,12 @@ export default function ProfilePage() {
               {/* Player card */}
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                 className="border-2 border-white/10 bg-black mb-4 overflow-hidden">
-                {/* Orange top bar */}
                 <div className="h-2 bg-[#ff751f]"></div>
                 <div className="p-5 md:p-6">
                   <div className="flex items-center gap-5">
-                    {/* Avatar */}
                     <div className="w-16 h-16 md:w-20 md:h-20 bg-[#ff751f] flex items-center justify-center text-black text-3xl md:text-4xl font-black flex-shrink-0">
                       {stats?.username?.[0]?.toUpperCase() || "?"}
                     </div>
-
                     <div className="flex-1 min-w-0">
                       <div className="text-xl md:text-2xl font-black uppercase truncate">{stats?.username}</div>
                       <div className="text-[10px] text-gray-500 mt-0.5 truncate" style={{ fontFamily: "Arial, sans-serif" }}>{stats?.email}</div>
@@ -130,7 +160,6 @@ export default function ProfilePage() {
                         <span className={`text-[8px] px-2 py-0.5 font-black mt-2 inline-block uppercase ${badge.class}`}>{badge.label}</span>
                       )}
                     </div>
-
                     <div className="text-right flex-shrink-0">
                       <div className="text-4xl md:text-5xl font-black text-[#ff751f] leading-none tabular-nums">#{rank}</div>
                       <div className="text-[9px] text-gray-600 uppercase tracking-widest mt-1" style={{ fontFamily: "Arial, sans-serif" }}>κατάταξη</div>
@@ -139,13 +168,64 @@ export default function ProfilePage() {
                 </div>
               </motion.div>
 
+              {/* Change username */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                className="border-2 border-white/10 bg-black mb-4 overflow-hidden">
+                <div className="bg-white px-4 py-2 flex items-center justify-between">
+                  <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Αλλαγή Username</span>
+                  {usernameSuccess && (
+                    <span className="text-green-600 text-[9px] font-black uppercase tracking-widest">✓ Αποθηκεύτηκε!</span>
+                  )}
+                </div>
+                <div className="p-4">
+                  {editingUsername ? (
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="text"
+                        value={newUsername}
+                        onChange={(e) => { setNewUsername(e.target.value); setUsernameError(""); }}
+                        className="w-full bg-white/5 border-2 border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-all font-black uppercase tracking-wide"
+                        placeholder="Νέο username..."
+                        maxLength={20}
+                        autoFocus
+                      />
+                      {usernameError && (
+                        <div className="text-[10px] text-red-400 border-l-4 border-red-500 pl-3 py-1 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>
+                          {usernameError}
+                        </div>
+                      )}
+                      <div className="flex gap-0">
+                        <button onClick={handleSaveUsername} disabled={savingUsername}
+                          className="flex-1 bg-[#ff751f] text-black font-black py-2.5 text-xs uppercase tracking-widest hover:bg-white disabled:opacity-50 transition-all border-2 border-[#ff751f]">
+                          {savingUsername ? "..." : "Αποθήκευσε"}
+                        </button>
+                        <button onClick={() => { setEditingUsername(false); setUsernameError(""); }}
+                          className="border-2 border-white/10 text-gray-500 px-5 py-2.5 text-xs font-black uppercase tracking-widest hover:border-white/30 transition-all">
+                          Ακύρωση
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-600 font-black uppercase tracking-wide" style={{ fontFamily: "Arial, sans-serif" }}>
+                        Τρέχον: <span className="text-white">{stats?.username}</span>
+                      </span>
+                      <button onClick={() => { setEditingUsername(true); setNewUsername(stats?.username || ""); }}
+                        className="text-[10px] font-black uppercase tracking-widest text-[#ff751f] border-2 border-[#ff751f]/30 px-3 py-2 hover:bg-[#ff751f] hover:text-black transition-all">
+                        ✏️ Αλλαγή
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+
               {/* Stats */}
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                 className="grid grid-cols-3 gap-0 mb-4 border-2 border-white/10 overflow-hidden">
                 {[
-                  { val: stats?.points || 0, label: "Πόντοι", orange: true },
-                  { val: `${accuracy}%`, label: "Ακρίβεια", orange: false },
-                  { val: `${totalCorrect}/${totalPredictions}`, label: "Σωστές", orange: false },
+                  { val: stats?.points || 0, label: "Πόντοι" },
+                  { val: `${accuracy}%`, label: "Ακρίβεια" },
+                  { val: `${totalCorrect}/${totalPredictions}`, label: "Σωστές" },
                 ].map((s, i) => (
                   <div key={i} className={`p-4 md:p-5 text-center border-r border-white/10 last:border-r-0 ${i === 0 ? "bg-[#ff751f]" : "bg-black"}`}>
                     <div className={`text-2xl md:text-3xl font-black tabular-nums ${i === 0 ? "text-black" : "text-white"}`}>{s.val}</div>
