@@ -40,7 +40,7 @@ export default function Navbar() {
 
           {/* Logo */}
 <a href="/" className="flex items-center group">
-  <img src="/logowhite.png" alt="CourtProphet" className="h-9 w-9 object-contain" />
+  <img src="/logowhite_temp.png" alt="CourtProphet" className="h-9 w-9 object-contain" />
 </a>
 
           {/* Desktop nav */}
