@@ -386,20 +386,34 @@ export default function Home() {
       </div>
 
       {/* Ticker */}
-      {games.length > 0 && (
-        <div className="bg-black border-b-2 border-[#ff751f] overflow-hidden">
-          <div className="flex overflow-x-auto scrollbar-none">
-            {[...games, ...games].map((g, i) => (
-              <div key={i} className="flex items-center gap-3 px-6 py-2.5 border-r border-white/10 flex-shrink-0">
-                <span className="text-[10px] font-black text-white">{g.homeTeam.substring(0,3).toUpperCase()}</span>
-                <span className="text-[#ff751f] font-black text-xs">×</span>
-                <span className="text-[10px] font-black text-white">{g.awayTeam.substring(0,3).toUpperCase()}</span>
-                <span className="text-[9px] text-gray-600 uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{formatGameDate(g.date)}</span>
-              </div>
-            ))}
+{games.length > 0 && (
+  <div className="bg-black border-b-2 border-[#ff751f] overflow-hidden">
+    <style>{`
+      @keyframes ticker {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+      }
+      .ticker-track {
+        animation: ticker 20s linear infinite;
+      }
+      .ticker-track:hover {
+        animation-play-state: paused;
+      }
+    `}</style>
+    <div className="flex">
+      <div className="ticker-track flex flex-shrink-0">
+        {[...games, ...games, ...games, ...games].map((g, i) => (
+          <div key={i} className="flex items-center gap-3 px-6 py-2.5 border-r border-white/10 flex-shrink-0">
+            <span className="text-[10px] font-black text-white">{g.homeTeam.substring(0,3).toUpperCase()}</span>
+            <span className="text-[#ff751f] font-black text-xs">×</span>
+            <span className="text-[10px] font-black text-white">{g.awayTeam.substring(0,3).toUpperCase()}</span>
+            <span className="text-[9px] text-gray-600 uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{formatGameDate(g.date)}</span>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Main content */}
       <div className="w-full max-w-7xl mx-auto px-5 md:px-10 py-8">
