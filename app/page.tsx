@@ -390,27 +390,32 @@ export default function Home() {
   <div className="bg-black border-b-2 border-[#ff751f] overflow-hidden">
     <style>{`
       @keyframes ticker {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
+        0% { transform: translateX(-50%); }
+        100% { transform: translateX(0%); }
       }
       .ticker-track {
-        animation: ticker 20s linear infinite;
-      }
-      .ticker-track:hover {
-        animation-play-state: paused;
+        animation: ticker 25s linear infinite;
+        display: flex;
+        width: max-content;
       }
     `}</style>
-    <div className="flex">
-      <div className="ticker-track flex flex-shrink-0">
-        {[...games, ...games, ...games, ...games].map((g, i) => (
-          <div key={i} className="flex items-center gap-3 px-6 py-2.5 border-r border-white/10 flex-shrink-0">
-            <span className="text-[10px] font-black text-white">{g.homeTeam.substring(0,3).toUpperCase()}</span>
-            <span className="text-[#ff751f] font-black text-xs">×</span>
-            <span className="text-[10px] font-black text-white">{g.awayTeam.substring(0,3).toUpperCase()}</span>
-            <span className="text-[9px] text-gray-600 uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{formatGameDate(g.date)}</span>
-          </div>
-        ))}
-      </div>
+    <div className="ticker-track">
+      {[...games, ...games].map((g, i) => (
+        <div key={i} className="flex items-center gap-3 px-6 py-2.5 border-r border-white/10 flex-shrink-0">
+          <span className="text-[10px] font-black text-white">{g.homeTeam.substring(0,3).toUpperCase()}</span>
+          <span className="text-[#ff751f] font-black text-xs">×</span>
+          <span className="text-[10px] font-black text-white">{g.awayTeam.substring(0,3).toUpperCase()}</span>
+          <span className="text-[9px] text-gray-600 uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{formatGameDate(g.date)}</span>
+        </div>
+      ))}
+      {[...games, ...games].map((g, i) => (
+        <div key={`clone-${i}`} className="flex items-center gap-3 px-6 py-2.5 border-r border-white/10 flex-shrink-0">
+          <span className="text-[10px] font-black text-white">{g.homeTeam.substring(0,3).toUpperCase()}</span>
+          <span className="text-[#ff751f] font-black text-xs">×</span>
+          <span className="text-[10px] font-black text-white">{g.awayTeam.substring(0,3).toUpperCase()}</span>
+          <span className="text-[9px] text-gray-600 uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{formatGameDate(g.date)}</span>
+        </div>
+      ))}
     </div>
   </div>
 )}
