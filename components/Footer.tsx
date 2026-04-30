@@ -8,14 +8,9 @@ export default function Footer() {
 
           {/* Logo + disclaimer */}
           <div className="max-w-lg">
-            <div className="flex items-center gap-0 mb-3">
-              <div className="bg-[#ff751f] px-2.5 py-1.5">
-                <span className="text-black font-black text-sm tracking-tighter">COURT</span>
-              </div>
-              <div className="bg-white px-2.5 py-1.5">
-                <span className="text-black font-black text-sm tracking-tighter">PROPHET</span>
-              </div>
-            </div>
+            <div className="mb-3">
+  <img src="/logowhite_temp.png" alt="CourtProphet" className="h-10 w-10 object-contain" />
+</div>
             <p className="text-xs text-gray-600 leading-relaxed" style={{ fontFamily: "Arial, sans-serif" }}>
               Το CourtProphet δεν σχετίζεται με την EuroLeague Basketball ή οποιαδήποτε επίσημη αθλητική οργάνωση. Είναι μια ανεξάρτητη πλατφόρμα προβλέψεων αποκλειστικά για ψυχαγωγικούς σκοπούς. Δεν υπάρχει χρηματικό στοίχημα.
             </p>
