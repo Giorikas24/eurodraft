@@ -225,7 +225,7 @@ export default function Home() {
     try {
       await setDoc(doc(db, "predictions", user.uid + "_" + matchday.id), {
         userId: user.uid, matchdayId: matchday.id, picks: newPredictions, updatedAt: new Date(),
-      }, { merge: true });
+      });
       await fetchGameStats(matchday.id);
     } catch (err) { console.error(err); }
     finally { setSaving(null); }
@@ -245,7 +245,7 @@ export default function Home() {
     try {
       await setDoc(doc(db, "predictions", user.uid + "_" + matchday.id), {
         userId: user.uid, matchdayId: matchday.id, picks: newPredictions, updatedAt: new Date(),
-      }, { merge: true });
+      });
     } catch (err) { console.error(err); }
     finally { setSaving(null); }
   };
@@ -264,7 +264,7 @@ export default function Home() {
     try {
       await setDoc(doc(db, "predictions", user.uid + "_" + matchday.id), {
         userId: user.uid, matchdayId: matchday.id, picks: newPredictions, updatedAt: new Date(),
-      }, { merge: true });
+      });
     } catch (err) { console.error(err); }
     finally { setSaving(null); }
   };
