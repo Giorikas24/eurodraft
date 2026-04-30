@@ -378,18 +378,6 @@ export default function Home() {
                     {matchday ? <CountdownTimer deadline={matchday.deadline} /> : <span className="text-2xl font-black text-white">—</span>}
                   </div>
                 </div>
-                {user && matchday && (
-                  <div className="border-t border-white/10 p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] text-gray-500 uppercase tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>Προβλέψεις</span>
-                      <span className="text-xs font-black text-[#ff751f]">{pickedCount}/{totalPicks}</span>
-                    </div>
-                    <div className="h-2 bg-white/10 w-full">
-                      <motion.div className="h-full bg-[#ff751f]"
-                        initial={{ width: 0 }} animate={{ width: progressPct + "%" }} transition={{ duration: 0.6 }} />
-                    </div>
-                  </div>
-                )}
               </div>
             </motion.div>
           </div>
