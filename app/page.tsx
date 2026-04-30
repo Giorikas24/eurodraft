@@ -22,6 +22,14 @@ interface OULine {
   result: string | null;
 }
 
+interface PlayerProp {
+  playerName: string;
+  line: number;
+  overPoints: number;
+  underPoints: number;
+  result: "over" | "under" | null;
+}
+
 interface Game {
   id: string;
   homeTeam: string;
@@ -31,6 +39,7 @@ interface Game {
   awayPoints: number;
   handicapLines: HCPLine[];
   ouLines: OULine[];
+  playerProps: PlayerProp[];
   status: string;
   result: string | null;
 }
@@ -269,6 +278,25 @@ export default function Home() {
     finally { setSaving(null); }
   };
 
+  const handlePlayerPropPick = async (gameId: string, propIndex: number, pick: "over" | "under") => {
+  if (!user) { router.push("/auth/login"); return; }
+  if (!matchday) return;
+  const deadline = matchday.deadline.toDate ? matchday.deadline.toDate() : new Date(matchday.deadline);
+  if (new Date() > deadline) { alert("Το deadline έχει περάσει!"); return; }
+  const pickKey = `${gameId}_prop_${propIndex}`;
+  setSaving(pickKey);
+  const newPredictions = { ...predictions };
+  if (newPredictions[pickKey] === pick) delete newPredictions[pickKey];
+  else newPredictions[pickKey] = pick;
+  setPredictions(newPredictions);
+  try {
+    await setDoc(doc(db, "predictions", user.uid + "_" + matchday.id), {
+      userId: user.uid, matchdayId: matchday.id, picks: newPredictions, updatedAt: new Date(),
+    });
+  } catch (err) { console.error(err); }
+  finally { setSaving(null); }
+};
+
   const formatGameDate = (date: any) => {
     if (!date) return "";
     const d = date.toDate ? date.toDate() : new Date(date);
@@ -422,12 +450,14 @@ export default function Home() {
                 {games.map((g, index) => {
                   const stats = gameStats[g.id];
                   const hasHCP = g.handicapLines?.length > 0;
-                  const hasOU = g.ouLines?.length > 0;
-                  const pickedHCP = hasHCP && Object.keys(predictions).some(k => k.startsWith(`${g.id}_hcp_`));
-                  const pickedOU = hasOU && Object.keys(predictions).some(k => k.startsWith(`${g.id}_ou_`));
-                  const picked12 = !!predictions[g.id];
-                  const allDone = picked12 && (!hasHCP || pickedHCP) && (!hasOU || pickedOU);
-                  const isExpanded = expandedGame === g.id;
+const hasOU = g.ouLines?.length > 0;
+const hasProps = g.playerProps?.length > 0;
+const pickedHCP = hasHCP && Object.keys(predictions).some(k => k.startsWith(`${g.id}_hcp_`));
+const pickedOU = hasOU && Object.keys(predictions).some(k => k.startsWith(`${g.id}_ou_`));
+const pickedProps = hasProps && g.playerProps.every((_, i) => !!predictions[`${g.id}_prop_${i}`]);
+const picked12 = !!predictions[g.id];
+const allDone = picked12 && (!hasHCP || pickedHCP) && (!hasOU || pickedOU);
+const isExpanded = expandedGame === g.id;
 
                   return (
                     <motion.div key={g.id}
@@ -455,10 +485,11 @@ export default function Home() {
                           </div>
                           <div className="flex items-center gap-1">
                             {[
-                              { label: "1/2", active: picked12 },
-                              ...(hasHCP ? [{ label: "HCP", active: pickedHCP }] : []),
-                              ...(hasOU ? [{ label: "O/U", active: pickedOU }] : []),
-                            ].map(b => (
+  { label: "1/2", active: picked12 },
+  ...(hasHCP ? [{ label: "HCP", active: pickedHCP }] : []),
+  ...(hasOU ? [{ label: "O/U", active: pickedOU }] : []),
+  ...(hasProps ? [{ label: "PROPS", active: pickedProps }] : []),
+].map(b => (
                               <span key={b.label} className={`text-[9px] px-2 py-0.5 font-black uppercase tracking-wider border ${
                                 b.active ? "bg-[#ff751f] border-[#ff751f] text-black" : "border-white/20 text-gray-600"
                               }`}>{b.label}</span>
@@ -507,22 +538,22 @@ export default function Home() {
                           </div>
                         )}
 
-                        {(hasHCP || hasOU) && (
-                          <button
-                            onClick={() => setExpandedGame(isExpanded ? null : g.id)}
-                            className={`w-full py-2 text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-center gap-2 ${
-                              isExpanded
-                                ? "border-[#ff751f] text-[#ff751f] bg-[#ff751f]/10"
-                                : "border-white/10 text-gray-600 hover:border-[#ff751f]/50 hover:text-[#ff751f]"
-                            }`}>
-                            {isExpanded ? "▲ Κλείσιμο" : "▼ HCP & O/U"}
-                            {(pickedHCP || pickedOU) && !isExpanded && (
-                              <span className="bg-[#ff751f] text-black text-[8px] w-4 h-4 flex items-center justify-center font-black">
-                                {(pickedHCP ? 1 : 0) + (pickedOU ? 1 : 0)}
-                              </span>
-                            )}
-                          </button>
-                        )}
+                        {(hasHCP || hasOU || hasProps) && (
+  <button
+    onClick={() => setExpandedGame(isExpanded ? null : g.id)}
+    className={`w-full py-2 text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-center gap-2 ${
+      isExpanded
+        ? "border-[#ff751f] text-[#ff751f] bg-[#ff751f]/10"
+        : "border-white/10 text-gray-600 hover:border-[#ff751f]/50 hover:text-[#ff751f]"
+    }`}>
+    {isExpanded ? "▲ Κλείσιμο" : "▼ HCP, O/U & Props"}
+    {(pickedHCP || pickedOU) && !isExpanded && (
+      <span className="bg-[#ff751f] text-black text-[8px] w-4 h-4 flex items-center justify-center font-black">
+        {(pickedHCP ? 1 : 0) + (pickedOU ? 1 : 0)}
+      </span>
+    )}
+  </button>
+)}
                       </div>
 
                       <AnimatePresence>
@@ -593,6 +624,56 @@ export default function Home() {
                                           <span className="font-black uppercase">{l.type === "over" ? "Over" : "Under"} <span className={isSelected ? "text-black" : "text-[#ff751f]"}>{l.line}</span></span>
                                           <span className={`text-xs font-black ${isSelected ? "text-black" : "text-[#ff751f]"}`}>+{l.points} πτς</span>
                                         </motion.button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                              {hasProps && (
+                                <div>
+                                  <div className="flex items-center gap-0 mb-3">
+                                    <div className="bg-yellow-400 px-3 py-1">
+                                      <span className="text-black text-[9px] font-black uppercase tracking-widest">Player Props</span>
+                                    </div>
+                                    <div className="bg-white/10 px-3 py-1">
+                                      <span className="text-gray-400 text-[9px] font-black uppercase tracking-widest">Επέλεξε για κάθε παίκτη</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-2">
+                                    {g.playerProps.map((p, i) => {
+                                      const pickKey = `${g.id}_prop_${i}`;
+                                      const picked = predictions[pickKey];
+                                      return (
+                                        <div key={i} className="border-2 border-white/10 overflow-hidden">
+                                          <div className="bg-white/5 px-3 py-2 border-b border-white/10">
+                                            <span className="text-[10px] font-black uppercase text-yellow-400">{p.playerName}</span>
+                                            <span className="text-[10px] text-gray-500 ml-2 font-black" style={{ fontFamily: "Arial, sans-serif" }}>— {p.line} πτς</span>
+                                          </div>
+                                          <div className="flex">
+                                            <motion.button whileTap={{ scale: 0.99 }}
+                                              onClick={() => handlePlayerPropPick(g.id, i, "over")}
+                                              disabled={deadlinePassed}
+                                              className={`flex-1 flex items-center justify-between px-4 py-3 border-r-2 border-white/10 text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                                                picked === "over"
+                                                  ? "bg-yellow-400 text-black"
+                                                  : "bg-transparent text-white hover:bg-yellow-400/10"
+                                              }`}>
+                                              <span className="font-black uppercase text-xs">Over {p.line}</span>
+                                              <span className={`text-xs font-black ${picked === "over" ? "text-black" : "text-[#ff751f]"}`}>+{p.overPoints} πτς</span>
+                                            </motion.button>
+                                            <motion.button whileTap={{ scale: 0.99 }}
+                                              onClick={() => handlePlayerPropPick(g.id, i, "under")}
+                                              disabled={deadlinePassed}
+                                              className={`flex-1 flex items-center justify-between px-4 py-3 text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                                                picked === "under"
+                                                  ? "bg-yellow-400 text-black"
+                                                  : "bg-transparent text-white hover:bg-yellow-400/10"
+                                              }`}>
+                                              <span className="font-black uppercase text-xs">Under {p.line}</span>
+                                              <span className={`text-xs font-black ${picked === "under" ? "text-black" : "text-[#ff751f]"}`}>+{p.underPoints} πτς</span>
+                                            </motion.button>
+                                          </div>
+                                        </div>
                                       );
                                     })}
                                   </div>
