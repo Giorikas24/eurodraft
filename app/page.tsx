@@ -275,6 +275,10 @@ export default function Home() {
     return d.toLocaleString("el-GR", { weekday: "short", hour: "2-digit", minute: "2-digit" });
   };
 
+  const deadlinePassed = matchday
+    ? (matchday.deadline.toDate ? matchday.deadline.toDate() : new Date(matchday.deadline)) < new Date()
+    : false;
+
   const totalPicks = games.length + games.filter(g => g.handicapLines?.length > 0).length + games.filter(g => g.ouLines?.length > 0).length;
   const pickedCount = Object.keys(predictions).length;
   const progressPct = totalPicks > 0 ? (pickedCount / totalPicks) * 100 : 0;
@@ -283,36 +287,21 @@ export default function Home() {
     <main className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden" style={{ fontFamily: "'Arial Black', 'Impact', sans-serif" }}>
       <Navbar />
 
-      {/* HERO — 90s basketball */}
+      {/* HERO */}
       <div className="relative overflow-hidden bg-[#0a0a0a]">
-
-        {/* Court lines background */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.04]">
-          {/* Center circle */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-4 border-white"></div>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-white"></div>
-          {/* Half court line */}
           <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-white"></div>
-          {/* Three point arc left */}
           <div className="absolute top-1/2 -translate-y-1/2 -left-20 w-80 h-96 rounded-full border-4 border-white" style={{ clipPath: "inset(0 0 0 50%)" }}></div>
-          {/* Three point arc right */}
           <div className="absolute top-1/2 -translate-y-1/2 -right-20 w-80 h-96 rounded-full border-4 border-white" style={{ clipPath: "inset(0 50% 0 0)" }}></div>
         </div>
-
-        {/* Big orange diagonal block */}
         <div className="absolute top-0 right-0 w-1/2 h-full bg-[#ff751f] opacity-[0.06]" style={{ clipPath: "polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)" }}></div>
 
         <div className="relative w-full max-w-7xl mx-auto px-5 md:px-10 py-12 md:py-16">
           <div className="flex flex-col md:flex-row md:items-end gap-8 md:gap-16">
-
-            {/* Left — big type */}
             <div className="flex-1">
-              <motion.div
-                initial={{ opacity: 0, x: -40 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                {/* Overline */}
+              <motion.div initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
                 <div className="flex items-center gap-0 mb-4">
                   <div className="bg-[#ff751f] px-3 py-1">
                     <span className="text-black text-[10px] font-black tracking-[4px] uppercase">Euroleague</span>
@@ -321,51 +310,27 @@ export default function Home() {
                     <span className="text-black text-[10px] font-black tracking-[4px] uppercase">Predictions</span>
                   </div>
                 </div>
-
-                {/* Main title */}
                 <div className="mb-2">
-                  <h1 className="text-[80px] md:text-[120px] font-black leading-[0.85] tracking-tighter uppercase text-white">
-                    COURT
-                  </h1>
+                  <h1 className="text-[80px] md:text-[120px] font-black leading-[0.85] tracking-tighter uppercase text-white">COURT</h1>
                   <h1 className="text-[80px] md:text-[120px] font-black leading-[0.85] tracking-tighter uppercase text-[#ff751f]"
-                    style={{ WebkitTextStroke: "0px", textShadow: "4px 4px 0px rgba(0,0,0,0.5)" }}>
-                    PROPHET
-                  </h1>
+                    style={{ textShadow: "4px 4px 0px rgba(0,0,0,0.5)" }}>PROPHET</h1>
                 </div>
-
-                {/* Tagline */}
                 <div className="border-l-4 border-[#ff751f] pl-4 mt-6 mb-8">
                   <p className="text-gray-400 text-sm font-bold leading-relaxed uppercase tracking-wide" style={{ fontFamily: "Arial, sans-serif" }}>
-                    Κάνε τις προβλέψεις σου.<br />
-                    Ανέβα στην κατάταξη.<br />
-                    Αποδείξου ο καλύτερος.
+                    Κάνε τις προβλέψεις σου.<br />Ανέβα στην κατάταξη.<br />Αποδείξου ο καλύτερος.
                   </p>
                 </div>
-
                 {!user && (
                   <div className="flex gap-0">
-                    <a href="/auth/register"
-                      className="bg-[#ff751f] text-black font-black px-8 py-4 text-sm uppercase tracking-widest hover:bg-white transition-colors">
-                      Ξεκίνα τώρα
-                    </a>
-                    <a href="/rules"
-                      className="border-2 border-white text-white font-black px-8 py-4 text-sm uppercase tracking-widest hover:bg-white hover:text-black transition-colors">
-                      Κανόνες
-                    </a>
+                    <a href="/auth/register" className="bg-[#ff751f] text-black font-black px-8 py-4 text-sm uppercase tracking-widest hover:bg-white transition-colors">Ξεκίνα τώρα</a>
+                    <a href="/rules" className="border-2 border-white text-white font-black px-8 py-4 text-sm uppercase tracking-widest hover:bg-white hover:text-black transition-colors">Κανόνες</a>
                   </div>
                 )}
               </motion.div>
             </div>
 
-            {/* Right — stats scoreboard */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="md:w-80"
-            >
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="md:w-80">
               <div className="border-2 border-white/20 bg-black">
-                {/* Scoreboard header */}
                 <div className="bg-[#ff751f] px-4 py-2 flex items-center justify-between">
                   <span className="text-black text-xs font-black tracking-widest uppercase">Live Scoreboard</span>
                   <div className="flex items-center gap-1.5">
@@ -373,22 +338,18 @@ export default function Home() {
                     <span className="text-black text-[10px] font-black">LIVE</span>
                   </div>
                 </div>
-
-                {/* Stats */}
-<div className="divide-y divide-white/10">
-  <div className="p-4">
-    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1" style={{ fontFamily: "Arial, sans-serif" }}>Αγωνιστική</div>
-    <div className="text-2xl font-black text-[#ff751f] truncate">
-      {matchday ? (matchday.name || `#${matchday.number}`) : "—"}
-    </div>
-  </div>
-  <div className="p-4">
-    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-2" style={{ fontFamily: "Arial, sans-serif" }}>Deadline</div>
-    {matchday ? <CountdownTimer deadline={matchday.deadline} /> : <span className="text-2xl font-black text-white">—</span>}
-  </div>
-</div>
-
-                {/* Progress */}
+                <div className="divide-y divide-white/10">
+                  <div className="p-4">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1" style={{ fontFamily: "Arial, sans-serif" }}>Αγωνιστική</div>
+                    <div className="text-2xl font-black text-[#ff751f] truncate">
+                      {matchday ? (matchday.name || `#${matchday.number}`) : "—"}
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-2" style={{ fontFamily: "Arial, sans-serif" }}>Deadline</div>
+                    {matchday ? <CountdownTimer deadline={matchday.deadline} /> : <span className="text-2xl font-black text-white">—</span>}
+                  </div>
+                </div>
                 {user && matchday && (
                   <div className="border-t border-white/10 p-4">
                     <div className="flex items-center justify-between mb-2">
@@ -405,8 +366,6 @@ export default function Home() {
             </motion.div>
           </div>
         </div>
-
-        {/* Bottom stripe */}
         <div className="h-2 bg-[#ff751f]"></div>
       </div>
 
@@ -432,8 +391,6 @@ export default function Home() {
 
           {/* Games */}
           <div className="flex-1 min-w-0">
-
-            {/* Section header */}
             <div className="flex items-center gap-0 mb-6">
               <div className="bg-[#ff751f] px-4 py-2">
                 <span className="text-black text-xs font-black uppercase tracking-widest">
@@ -441,9 +398,11 @@ export default function Home() {
                 </span>
               </div>
               {matchday && (
-                <div className="bg-white/10 px-4 py-2 flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-                  <span className="text-xs font-black text-white uppercase tracking-widest">Ανοιχτή</span>
+                <div className={`px-4 py-2 flex items-center gap-2 ${deadlinePassed ? "bg-red-600" : "bg-white/10"}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${deadlinePassed ? "bg-white" : "bg-green-400"}`}></div>
+                  <span className="text-xs font-black text-white uppercase tracking-widest">
+                    {deadlinePassed ? "Κλειστή" : "Ανοιχτή"}
+                  </span>
                 </div>
               )}
             </div>
@@ -479,17 +438,15 @@ export default function Home() {
                         allDone ? "border-[#ff751f] bg-[#ff751f]/5" : "border-white/10 bg-black hover:border-white/30"
                       }`}
                     >
-                      {/* Game header stripe */}
                       {allDone && <div className="h-1 bg-[#ff751f]"></div>}
 
                       <div className="p-4 md:p-5">
-                        {/* Meta */}
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>
                               {formatGameDate(g.date)}
                             </span>
-                            {g.status === "live" && (
+                            {(g.status === "live" || deadlinePassed) && (
                               <div className="bg-red-600 px-2 py-0.5 flex items-center gap-1">
                                 <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
                                 <span className="text-[9px] text-white font-black uppercase">Live</span>
@@ -503,25 +460,21 @@ export default function Home() {
                               ...(hasOU ? [{ label: "O/U", active: pickedOU }] : []),
                             ].map(b => (
                               <span key={b.label} className={`text-[9px] px-2 py-0.5 font-black uppercase tracking-wider border ${
-                                b.active
-                                  ? "bg-[#ff751f] border-[#ff751f] text-black"
-                                  : "border-white/20 text-gray-600"
+                                b.active ? "bg-[#ff751f] border-[#ff751f] text-black" : "border-white/20 text-gray-600"
                               }`}>{b.label}</span>
                             ))}
                           </div>
                         </div>
 
-                        {/* Teams */}
                         <div className="flex items-stretch gap-0 mb-4">
-                          <motion.button
-                            whileTap={{ scale: 0.98 }}
+                          <motion.button whileTap={{ scale: 0.98 }}
                             onClick={() => handlePick(g.id, "home")}
-                            disabled={!!saving}
+                            disabled={!!saving || deadlinePassed}
                             className={`flex-1 flex items-center justify-between px-4 py-4 border-2 transition-all ${
                               predictions[g.id] === "home"
                                 ? "bg-[#ff751f] border-[#ff751f] text-black"
                                 : "bg-transparent border-white/10 text-white hover:border-[#ff751f]/50 hover:bg-[#ff751f]/5"
-                            }`}>
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}>
                             <span className="text-sm font-black uppercase truncate">{g.homeTeam}</span>
                             <span className={`text-xs font-black ml-2 flex-shrink-0 ${predictions[g.id] === "home" ? "text-black" : "text-[#ff751f]"}`}>+{g.homePoints}</span>
                           </motion.button>
@@ -530,21 +483,19 @@ export default function Home() {
                             <span className="text-[10px] font-black text-gray-600 uppercase">vs</span>
                           </div>
 
-                          <motion.button
-                            whileTap={{ scale: 0.98 }}
+                          <motion.button whileTap={{ scale: 0.98 }}
                             onClick={() => handlePick(g.id, "away")}
-                            disabled={!!saving}
+                            disabled={!!saving || deadlinePassed}
                             className={`flex-1 flex items-center justify-between px-4 py-4 border-2 transition-all ${
                               predictions[g.id] === "away"
                                 ? "bg-[#ff751f] border-[#ff751f] text-black"
                                 : "bg-transparent border-white/10 text-white hover:border-[#ff751f]/50 hover:bg-[#ff751f]/5"
-                            }`}>
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}>
                             <span className={`text-xs font-black mr-2 flex-shrink-0 ${predictions[g.id] === "away" ? "text-black" : "text-[#ff751f]"}`}>+{g.awayPoints}</span>
                             <span className="text-sm font-black uppercase truncate text-right">{g.awayTeam}</span>
                           </motion.button>
                         </div>
 
-                        {/* Stats bar */}
                         {stats && stats.total > 0 && (
                           <div className="flex items-center gap-2 mb-3">
                             <span className="text-[9px] font-black text-gray-600 w-8 text-right tabular-nums">{stats.homePct}%</span>
@@ -556,7 +507,6 @@ export default function Home() {
                           </div>
                         )}
 
-                        {/* Expand */}
                         {(hasHCP || hasOU) && (
                           <button
                             onClick={() => setExpandedGame(isExpanded ? null : g.id)}
@@ -575,7 +525,6 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* Expanded */}
                       <AnimatePresence>
                         {isExpanded && (
                           <motion.div
@@ -604,7 +553,8 @@ export default function Home() {
                                       return (
                                         <motion.button key={i} whileTap={{ scale: 0.99 }}
                                           onClick={() => handleHCPPick(g.id, i)}
-                                          className={`flex items-center justify-between px-4 py-3 border-2 text-sm transition-all ${
+                                          disabled={deadlinePassed}
+                                          className={`flex items-center justify-between px-4 py-3 border-2 text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
                                             isSelected
                                               ? "bg-white text-black border-white"
                                               : "bg-transparent border-white/10 text-white hover:border-white/40"
@@ -634,7 +584,8 @@ export default function Home() {
                                       return (
                                         <motion.button key={i} whileTap={{ scale: 0.99 }}
                                           onClick={() => handleOUPick(g.id, i)}
-                                          className={`flex items-center justify-between px-4 py-3 border-2 text-sm transition-all ${
+                                          disabled={deadlinePassed}
+                                          className={`flex items-center justify-between px-4 py-3 border-2 text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
                                             isSelected
                                               ? "bg-[#ff751f] text-black border-[#ff751f]"
                                               : "bg-transparent border-white/10 text-white hover:border-[#ff751f]/50"
@@ -660,8 +611,6 @@ export default function Home() {
 
           {/* Sidebar */}
           <div className="lg:w-64 xl:w-72 flex flex-col gap-4">
-
-            {/* Leaderboard */}
             <div className="border-2 border-white/10 bg-black">
               <div className="bg-white px-4 py-2">
                 <div className="flex items-center justify-between">
@@ -684,9 +633,7 @@ export default function Home() {
                           <div className={`w-7 h-7 flex items-center justify-center text-[10px] font-black flex-shrink-0 ${isMe ? "bg-black text-[#ff751f]" : "bg-white/10 text-white"}`}>
                             {u.username?.[0]?.toUpperCase() || "?"}
                           </div>
-                          <span className={`text-xs flex-1 truncate font-black uppercase ${isMe ? "text-black" : "text-white"}`}>
-                            {u.username}
-                          </span>
+                          <span className={`text-xs flex-1 truncate font-black uppercase ${isMe ? "text-black" : "text-white"}`}>{u.username}</span>
                           <span className={`text-xs font-black tabular-nums ${isMe ? "text-black" : "text-[#ff751f]"}`}>{u.points}</span>
                         </div>
                       );
@@ -708,7 +655,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* My stats */}
             {user ? (
               <div className="border-2 border-white/10 bg-black">
                 <div className="bg-[#ff751f] px-4 py-2">
@@ -723,9 +669,7 @@ export default function Home() {
                       </div>
                     </div>
                     {myRank > 0 && (
-                      <div className="text-right">
-                        <div className="text-4xl font-black text-[#ff751f] tabular-nums leading-none">#{myRank}</div>
-                      </div>
+                      <div className="text-4xl font-black text-[#ff751f] tabular-nums leading-none">#{myRank}</div>
                     )}
                   </div>
                   <div className="h-2 bg-white/10 w-full">
@@ -740,17 +684,12 @@ export default function Home() {
                   Συνδέσου για να παρακολουθείς τη θέση σου.
                 </p>
                 <div className="flex gap-0">
-                  <a href="/auth/login" className="flex-1 text-center py-2.5 text-xs border-2 border-white/20 text-white font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all">
-                    Σύνδεση
-                  </a>
-                  <a href="/auth/register" className="flex-1 text-center py-2.5 text-xs bg-[#ff751f] text-black font-black uppercase tracking-widest hover:bg-white transition-all">
-                    Εγγραφή
-                  </a>
+                  <a href="/auth/login" className="flex-1 text-center py-2.5 text-xs border-2 border-white/20 text-white font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all">Σύνδεση</a>
+                  <a href="/auth/register" className="flex-1 text-center py-2.5 text-xs bg-[#ff751f] text-black font-black uppercase tracking-widest hover:bg-white transition-all">Εγγραφή</a>
                 </div>
               </div>
             )}
 
-            {/* Challenge */}
             {challenge && challenge.text && (
               <div className="border-2 border-[#ff751f] bg-black">
                 <div className="bg-[#ff751f] px-4 py-2 flex items-center justify-between">
