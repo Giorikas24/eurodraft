@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { collection, addDoc, query, orderBy, limit, onSnapshot, getDocs, where, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, limit, onSnapshot, getDocs, where, doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
@@ -35,18 +35,26 @@ const getDMId = (uid1: string, uid2: string) => [uid1, uid2].sort().join("_");
 export default function ChatPage() {
   const { user } = useAuth();
   const router = useRouter();
+
+  // Global chat
   const [tab, setTab] = useState<"global" | "dm">("global");
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // DM
   const [conversations, setConversations] = useState<DMConversation[]>([]);
   const [activeDM, setActiveDM] = useState<DMConversation | null>(null);
   const [dmMessages, setDMMessages] = useState<Message[]>([]);
   const [searchUsername, setSearchUsername] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Mobile: null = list, DMConversation = open chat
+  const [mobileView, setMobileView] = useState<"list" | "chat">("list");
 
   useEffect(() => {
     if (tab !== "global") return;
@@ -59,7 +67,7 @@ export default function ChatPage() {
   }, [tab]);
 
   useEffect(() => {
-    if (!user || tab !== "dm") return;
+    if (!user) return;
     const q = query(collection(db, "dm_conversations"), where("members", "array-contains", user.uid), orderBy("lastAt", "desc"));
     const unsub = onSnapshot(q, async (snapshot) => {
       const convs: DMConversation[] = [];
@@ -73,7 +81,7 @@ export default function ChatPage() {
       setConversations(convs);
     });
     return () => unsub();
-  }, [user, tab]);
+  }, [user]);
 
   useEffect(() => {
     if (!activeDM) return;
@@ -106,7 +114,6 @@ export default function ChatPage() {
       await addDoc(collection(db, "dm_conversations", activeDM.id, "messages"), {
         text: text.trim(), username: user.displayName || user.email, userId: user.uid, createdAt: new Date(),
       });
-      const { setDoc } = await import("firebase/firestore");
       await setDoc(doc(db, "dm_conversations", activeDM.id), {
         members: [user.uid, activeDM.otherUserId], lastMessage: text.trim(), lastAt: new Date(),
       }, { merge: true });
@@ -126,12 +133,19 @@ export default function ChatPage() {
       const otherUser = snap.docs[0];
       if (otherUser.id === user.uid) { setSearchError("Δεν μπορείς να στείλεις στον εαυτό σου!"); return; }
       const dmId = getDMId(user.uid, otherUser.id);
-      const { setDoc } = await import("firebase/firestore");
       await setDoc(doc(db, "dm_conversations", dmId), { members: [user.uid, otherUser.id], lastAt: new Date() }, { merge: true });
-      setActiveDM({ id: dmId, otherUserId: otherUser.id, otherUsername: otherUser.data().username });
+      const newConv = { id: dmId, otherUserId: otherUser.id, otherUsername: otherUser.data().username };
+      setActiveDM(newConv);
       setSearchUsername("");
+      setShowSearch(false);
+      setMobileView("chat");
     } catch (err) { console.error(err); }
     finally { setSearching(false); }
+  };
+
+  const openDM = (conv: DMConversation) => {
+    setActiveDM(conv);
+    setMobileView("chat");
   };
 
   const formatTime = (date: any) => {
@@ -144,6 +158,17 @@ export default function ChatPage() {
     if (!date) return "";
     const d = date.toDate ? date.toDate() : new Date(date);
     return d.toLocaleDateString("el-GR", { day: "numeric", month: "long" });
+  };
+
+  const formatLastAt = (date: any) => {
+    if (!date) return "";
+    const d = date.toDate ? date.toDate() : new Date(date);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    if (diff < 60000) return "μόλις τώρα";
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}λ`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}ω`;
+    return d.toLocaleDateString("el-GR", { day: "numeric", month: "numeric" });
   };
 
   const renderMessages = (msgs: Message[]) => {
@@ -178,18 +203,18 @@ export default function ChatPage() {
                   {msg.username?.[0]?.toUpperCase() || "?"}
                 </div>
               ) : <div className="w-8 flex-shrink-0"></div>}
-              <div className={`max-w-[80%] flex flex-col gap-1 ${isMe ? "items-end" : "items-start"}`}>
+              <div className={`max-w-[75%] flex flex-col gap-1 ${isMe ? "items-end" : "items-start"}`}>
                 {showAvatar && (
                   <div className="flex items-center gap-2 px-1">
                     {!isMe && <span className="text-[10px] font-black uppercase" style={{ color }}>{msg.username}</span>}
                     <span className="text-[9px] text-gray-600" style={{ fontFamily: "Arial, sans-serif" }}>{formatTime(msg.createdAt)}</span>
                   </div>
                 )}
-                <div className={`px-4 py-2.5 text-sm break-words leading-relaxed border-2 ${
+                <div className={`px-4 py-2.5 text-sm break-words leading-relaxed ${
                   isMe
-                    ? "bg-[#ff751f] text-black border-[#ff751f] font-black"
-                    : "bg-black text-white border-white/10"
-                }`} style={{ fontFamily: "Arial, sans-serif" }}>
+                    ? "bg-[#ff751f] text-black font-black"
+                    : "bg-white/10 text-white"
+                }`} style={{ fontFamily: "Arial, sans-serif", borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px" }}>
                   {msg.text}
                 </div>
               </div>
@@ -201,150 +226,218 @@ export default function ChatPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white flex flex-col" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
+    <main className="h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
       <Navbar />
 
-      {/* Header */}
+      {/* Tabs */}
       <div className="bg-black border-b-2 border-[#ff751f] flex-shrink-0">
-        <div className="w-full max-w-4xl mx-auto px-5 md:px-10 py-6">
-          <div className="flex items-center gap-0 mb-4">
-            <div className="bg-[#ff751f] px-3 py-1">
-              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">CourtProphet</span>
-            </div>
-            <div className="bg-white px-3 py-1">
-              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Community</span>
-            </div>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-black uppercase leading-none tracking-tighter mb-4">
-            CH<span className="text-[#ff751f]">AT</span>
-          </h1>
-          {/* Tabs */}
-          <div className="flex gap-0">
-            <button onClick={() => { setTab("global"); setActiveDM(null); }}
-              className={`px-5 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all border-2 ${
-                tab === "global"
-                  ? "bg-[#ff751f] border-[#ff751f] text-black"
-                  : "bg-transparent border-white/20 text-gray-500 hover:text-white hover:border-white/40"
-              }`}>
-              🌍 Global
-            </button>
-            <button onClick={() => setTab("dm")}
-              className={`px-5 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all border-2 border-l-0 ${
-                tab === "dm"
-                  ? "bg-[#ff751f] border-[#ff751f] text-black"
-                  : "bg-transparent border-white/20 text-gray-500 hover:text-white hover:border-white/40"
-              }`}>
-              💬 Προσωπικά
-            </button>
-          </div>
+        <div className="flex">
+          <button onClick={() => { setTab("global"); setMobileView("list"); }}
+            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-r border-white/10 ${
+              tab === "global" ? "bg-[#ff751f] text-black" : "text-gray-500 hover:text-white hover:bg-white/5"
+            }`}>
+            🌍 Global
+          </button>
+          <button onClick={() => { setTab("dm"); setMobileView("list"); }}
+            className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+              tab === "dm" ? "bg-[#ff751f] text-black" : "text-gray-500 hover:text-white hover:bg-white/5"
+            }`}>
+            💬 Μηνύματα
+          </button>
         </div>
       </div>
 
-      {/* Global Chat */}
+      {/* GLOBAL CHAT */}
       {tab === "global" && (
-        <div className="w-full max-w-4xl mx-auto px-5 md:px-10 py-6 flex flex-col flex-1">
-          <div className="border-2 border-white/10 bg-black p-4 flex flex-col flex-1 min-h-[400px] md:h-[500px] overflow-y-auto mb-3 scrollbar-none">
+        <div className="flex flex-col flex-1 overflow-hidden max-w-2xl w-full mx-auto px-0 md:px-0">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 scrollbar-none">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-3">
-                <div className="w-16 h-16 bg-white/5 border-2 border-white/10 flex items-center justify-center text-3xl">💬</div>
+                <div className="text-5xl">💬</div>
                 <div className="text-gray-600 text-xs uppercase font-black tracking-widest">Ξεκίνα τη συζήτηση!</div>
               </div>
             )}
             {renderMessages(messages)}
             <div ref={bottomRef} />
           </div>
+
+          {/* Input */}
           {user ? (
-            <form onSubmit={handleSendGlobal} className="flex gap-0">
+            <form onSubmit={handleSendGlobal} className="flex gap-0 border-t-2 border-white/10 bg-black flex-shrink-0">
               <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value)}
-                className="flex-1 bg-black border-2 border-white/10 px-4 py-3.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f] transition-all"
+                className="flex-1 bg-black px-4 py-4 text-sm text-white placeholder-gray-600 focus:outline-none"
                 style={{ fontFamily: "Arial, sans-serif" }}
                 placeholder="Γράψε μήνυμα..." maxLength={500} />
               <button type="submit" disabled={sending || !text.trim()}
-                className="bg-[#ff751f] text-black font-black px-6 text-sm hover:bg-white disabled:opacity-50 transition-all border-2 border-[#ff751f]">
+                className="bg-[#ff751f] text-black font-black px-6 disabled:opacity-50 transition-all">
                 {sending ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : "→"}
               </button>
             </form>
           ) : (
-            <div className="border-2 border-white/10 bg-black p-4 text-center text-xs text-gray-600 font-black uppercase tracking-widest">
+            <div className="border-t-2 border-white/10 bg-black p-4 text-center text-xs text-gray-600 font-black uppercase tracking-widest flex-shrink-0">
               <a href="/auth/login" className="text-[#ff751f] hover:underline">Συνδέσου</a> για να γράψεις
             </div>
           )}
         </div>
       )}
 
-      {/* DM */}
+      {/* DM — Instagram style */}
       {tab === "dm" && (
-        <div className="w-full max-w-4xl mx-auto px-5 md:px-10 py-6 flex gap-4 flex-1">
-          {/* Sidebar */}
-          <div className="w-56 flex-shrink-0 flex flex-col gap-3">
-            <form onSubmit={handleSearchAndStart} className="flex flex-col gap-0">
-              <input type="text" value={searchUsername} onChange={(e) => { setSearchUsername(e.target.value); setSearchError(""); }}
-                className="w-full bg-black border-2 border-white/10 px-3 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f] transition-all"
-                style={{ fontFamily: "Arial, sans-serif" }}
-                placeholder="Username..." />
-              {searchError && <div className="text-[10px] text-red-400 font-black py-1 px-2 bg-red-400/10 border border-red-400/20" style={{ fontFamily: "Arial, sans-serif" }}>{searchError}</div>}
-              <button type="submit" disabled={searching || !searchUsername.trim()}
-                className="bg-[#ff751f] text-black font-black py-2.5 text-[10px] uppercase tracking-widest hover:bg-white disabled:opacity-50 transition-all border-2 border-[#ff751f] border-t-0">
-                {searching ? "..." : "+ Νέα συνομιλία"}
-              </button>
-            </form>
+        <div className="flex flex-1 overflow-hidden">
 
-            <div className="flex flex-col gap-0 border-2 border-white/10 overflow-hidden">
-              {conversations.length === 0 ? (
-                <div className="text-[10px] text-gray-600 text-center py-6 font-black uppercase tracking-widest px-3">
-                  Καμία συνομιλία
+          {/* LEFT: Conversations list */}
+          <div className={`
+            flex-shrink-0 border-r border-white/10 flex flex-col bg-black
+            ${activeDM ? "hidden md:flex md:w-72" : "w-full md:w-72"}
+          `}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
+              <span className="text-sm font-black uppercase tracking-widest text-white">
+                {user?.displayName || "Messages"}
+              </span>
+              <button onClick={() => setShowSearch(!showSearch)}
+                className={`w-8 h-8 flex items-center justify-center font-black text-lg transition-all ${
+                  showSearch ? "text-[#ff751f]" : "text-gray-500 hover:text-white"
+                }`}>
+                ✏️
+              </button>
+            </div>
+
+            {/* Search */}
+            <AnimatePresence>
+              {showSearch && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                  className="border-b border-white/10 overflow-hidden flex-shrink-0">
+                  <form onSubmit={handleSearchAndStart} className="p-3 flex flex-col gap-2">
+                    <input type="text" value={searchUsername} onChange={(e) => { setSearchUsername(e.target.value); setSearchError(""); }}
+                      className="w-full bg-white/10 px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:bg-white/15 transition-all"
+                      style={{ fontFamily: "Arial, sans-serif", borderRadius: 8 }}
+                      placeholder="Αναζήτηση username..." autoFocus />
+                    {searchError && <div className="text-[10px] text-red-400 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{searchError}</div>}
+                    <button type="submit" disabled={searching || !searchUsername.trim()}
+                      className="bg-[#ff751f] text-black font-black py-2 text-[10px] uppercase tracking-widest hover:bg-white disabled:opacity-50 transition-all"
+                      style={{ borderRadius: 8 }}>
+                      {searching ? "..." : "Έναρξη συνομιλίας"}
+                    </button>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Conversations */}
+            <div className="flex-1 overflow-y-auto scrollbar-none">
+              {!user ? (
+                <div className="flex flex-col items-center justify-center h-full gap-3 p-6">
+                  <div className="text-4xl">🔒</div>
+                  <div className="text-gray-600 text-[10px] uppercase font-black tracking-widest text-center">Συνδέσου για να δεις τα μηνύματά σου</div>
+                  <a href="/auth/login" className="text-[#ff751f] text-xs font-black uppercase tracking-widest hover:underline">Σύνδεση →</a>
                 </div>
-              ) : conversations.map(conv => (
-                <button key={conv.id} onClick={() => setActiveDM(conv)}
-                  className={`text-left px-3 py-3 border-b border-white/10 last:border-0 transition-all flex items-center gap-2 ${
-                    activeDM?.id === conv.id ? "bg-[#ff751f]" : "bg-black hover:bg-white/5"
-                  }`}>
-                  <div className="w-7 h-7 flex items-center justify-center text-black font-black text-[10px] flex-shrink-0"
-                    style={{ backgroundColor: getUserColor(conv.otherUserId) }}>
-                    {conv.otherUsername?.[0]?.toUpperCase() || "?"}
-                  </div>
-                  <div className="min-w-0">
-                    <div className={`text-[10px] font-black uppercase truncate ${activeDM?.id === conv.id ? "text-black" : "text-white"}`}>{conv.otherUsername}</div>
-                    {conv.lastMessage && <div className={`text-[9px] truncate ${activeDM?.id === conv.id ? "text-black/70" : "text-gray-600"}`} style={{ fontFamily: "Arial, sans-serif" }}>{conv.lastMessage}</div>}
-                  </div>
-                </button>
-              ))}
+              ) : conversations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-3 p-6">
+                  <div className="text-4xl">💬</div>
+                  <div className="text-gray-600 text-[10px] uppercase font-black tracking-widest text-center">Καμία συνομιλία ακόμα</div>
+                  <button onClick={() => setShowSearch(true)} className="text-[#ff751f] text-xs font-black uppercase tracking-widest hover:underline">
+                    Ξεκίνα νέα →
+                  </button>
+                </div>
+              ) : conversations.map(conv => {
+                const isActive = activeDM?.id === conv.id;
+                const color = getUserColor(conv.otherUserId);
+                return (
+                  <button key={conv.id} onClick={() => openDM(conv)}
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 border-b border-white/[0.04] transition-all text-left ${
+                      isActive ? "bg-white/10" : "hover:bg-white/5"
+                    }`}>
+                    {/* Avatar */}
+                    <div className="w-12 h-12 flex items-center justify-center text-black font-black text-lg flex-shrink-0"
+                      style={{ backgroundColor: color, borderRadius: "50%" }}>
+                      {conv.otherUsername?.[0]?.toUpperCase() || "?"}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-sm font-black uppercase text-white truncate">{conv.otherUsername}</span>
+                        <span className="text-[9px] text-gray-600 flex-shrink-0 ml-2" style={{ fontFamily: "Arial, sans-serif" }}>
+                          {formatLastAt(conv.lastAt)}
+                        </span>
+                      </div>
+                      {conv.lastMessage && (
+                        <div className="text-[11px] text-gray-500 truncate" style={{ fontFamily: "Arial, sans-serif" }}>
+                          {conv.lastMessage}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* DM Chat */}
-          <div className="flex-1 flex flex-col min-w-0">
+          {/* RIGHT: Active DM */}
+          <div className={`
+            flex-1 flex flex-col overflow-hidden
+            ${!activeDM ? "hidden md:flex" : "flex"}
+          `}>
             {!activeDM ? (
-              <div className="flex-1 border-2 border-white/10 bg-black flex items-center justify-center">
+              <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                <div className="w-20 h-20 border-2 border-white/10 flex items-center justify-center text-4xl">💬</div>
                 <div className="text-center">
-                  <div className="text-4xl mb-3">💬</div>
-                  <div className="text-gray-600 text-[10px] uppercase font-black tracking-widest">Επέλεξε συνομιλία</div>
+                  <div className="text-lg font-black uppercase mb-2">Τα μηνύματά σου</div>
+                  <div className="text-gray-600 text-xs uppercase font-black tracking-widest mb-4">Στείλε μήνυμα σε έναν παίκτη</div>
+                  <button onClick={() => setShowSearch(true)}
+                    className="bg-[#ff751f] text-black font-black px-6 py-3 text-xs uppercase tracking-widest hover:bg-white transition-all">
+                    Νέο μήνυμα
+                  </button>
                 </div>
               </div>
             ) : (
               <>
-                <div className="bg-[#ff751f] px-4 py-3 flex items-center gap-3 mb-0">
-                  <div className="w-8 h-8 bg-black flex items-center justify-center text-[#ff751f] font-black text-xs">
+                {/* DM Header */}
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-black flex-shrink-0">
+                  {/* Back button (mobile) */}
+                  <button
+                    onClick={() => { setActiveDM(null); setMobileView("list"); }}
+                    className="md:hidden text-[#ff751f] font-black text-lg mr-1">←</button>
+                  <div className="w-10 h-10 flex items-center justify-center text-black font-black text-base flex-shrink-0"
+                    style={{ backgroundColor: getUserColor(activeDM.otherUserId), borderRadius: "50%" }}>
                     {activeDM.otherUsername?.[0]?.toUpperCase() || "?"}
                   </div>
-                  <span className="font-black text-black text-sm uppercase tracking-wide">{activeDM.otherUsername}</span>
+                  <div>
+                    <div className="text-sm font-black uppercase text-white">{activeDM.otherUsername}</div>
+                    <div className="text-[10px] text-gray-600 uppercase font-black tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>
+                      CourtProphet Player
+                    </div>
+                  </div>
                 </div>
-                <div className="border-2 border-white/10 border-t-0 bg-black p-4 flex flex-col flex-1 min-h-[350px] overflow-y-auto mb-0 scrollbar-none">
+
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 scrollbar-none">
                   {dmMessages.length === 0 && (
-                    <div className="flex items-center justify-center h-full text-gray-600 text-[10px] uppercase font-black tracking-widest">
-                      Ξεκίνα τη συνομιλία!
+                    <div className="flex flex-col items-center justify-center h-full gap-3">
+                      <div className="w-16 h-16 flex items-center justify-center text-black font-black text-2xl"
+                        style={{ backgroundColor: getUserColor(activeDM.otherUserId), borderRadius: "50%" }}>
+                        {activeDM.otherUsername?.[0]?.toUpperCase() || "?"}
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-black uppercase mb-1">{activeDM.otherUsername}</div>
+                        <div className="text-gray-600 text-[10px] uppercase font-black tracking-widest">CourtProphet Player</div>
+                      </div>
                     </div>
                   )}
                   {renderMessages(dmMessages)}
                   <div ref={bottomRef} />
                 </div>
-                <form onSubmit={handleSendDM} className="flex gap-0">
+
+                {/* Input */}
+                <form onSubmit={handleSendDM} className="flex items-center gap-3 px-4 py-3 border-t border-white/10 bg-black flex-shrink-0">
                   <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value)}
-                    className="flex-1 bg-black border-2 border-white/10 border-t-0 px-4 py-3.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#ff751f] transition-all"
-                    style={{ fontFamily: "Arial, sans-serif" }}
-                    placeholder={`Μήνυμα στον ${activeDM.otherUsername}...`} maxLength={500} />
+                    className="flex-1 bg-white/10 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:bg-white/15 transition-all"
+                    style={{ fontFamily: "Arial, sans-serif", borderRadius: 24 }}
+                    placeholder={`Μήνυμα...`} maxLength={500} />
                   <button type="submit" disabled={sending || !text.trim()}
-                    className="bg-[#ff751f] text-black font-black px-6 text-sm hover:bg-white disabled:opacity-50 transition-all border-2 border-[#ff751f] border-t-0 border-l-0">
+                    className="w-10 h-10 bg-[#ff751f] text-black font-black flex items-center justify-center disabled:opacity-50 transition-all flex-shrink-0"
+                    style={{ borderRadius: "50%" }}>
                     {sending ? <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : "→"}
                   </button>
                 </form>
