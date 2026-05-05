@@ -3,14 +3,11 @@
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { motion } from "framer-motion";
 
 const ADMIN_EMAIL = "georgelipas05@gmail.com";
-// Πρόσθεσε state στην αρχή
-const [migrating, setMigrating] = useState(false);
-const [migrated, setMigrated] = useState(false);
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -20,82 +17,79 @@ export default function AdminPage() {
   const [challengeRequired, setChallengeRequired] = useState("");
   const [savingChallenge, setSavingChallenge] = useState(false);
   const [challengeSaved, setChallengeSaved] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const [migrated, setMigrated] = useState(false);
 
-  // Πρόσθεσε function
-const handleMigrate = async () => {
-  if (!confirm("Σίγουρα; Αυτό θα μετατρέψει όλα τα HCP/OU δεδομένα.")) return;
-  setMigrating(true);
-  try {
-    const { collection, getDocs, doc, updateDoc } = await import("firebase/firestore");
-    const matchdaysSnap = await getDocs(collection(db, "matchdays"));
-    for (const matchdayDoc of matchdaysSnap.docs) {
-      const gamesSnap = await getDocs(collection(db, "matchdays", matchdayDoc.id, "games"));
-      for (const gameDoc of gamesSnap.docs) {
-        const game = gameDoc.data();
-        const oldHcp = game.handicapLines || [];
-        const oldOU = game.ouLines || [];
-        if (oldHcp.length === 0 && oldOU.length === 0) continue;
-        // Check if already migrated (new format has homeLine field)
-        if (oldHcp.length > 0 && oldHcp[0].homeLine !== undefined) continue;
+  const handleMigrate = async () => {
+    if (!confirm("Σίγουρα; Αυτό θα μετατρέψει όλα τα HCP/OU δεδομένα.")) return;
+    setMigrating(true);
+    try {
+      const matchdaysSnap = await getDocs(collection(db, "matchdays"));
+      for (const matchdayDoc of matchdaysSnap.docs) {
+        const gamesSnap = await getDocs(collection(db, "matchdays", matchdayDoc.id, "games"));
+        for (const gameDoc of gamesSnap.docs) {
+          const game = gameDoc.data();
+          const oldHcp = game.handicapLines || [];
+          const oldOU = game.ouLines || [];
+          if (oldHcp.length === 0 && oldOU.length === 0) continue;
+          if (oldHcp.length > 0 && oldHcp[0].homeLine !== undefined) continue;
 
-        // Migrate HCP
-        const hcpMap: Record<number, any> = {};
-        for (const l of oldHcp) {
-          const key = l.homePoints || l.points;
-          if (!hcpMap[key]) hcpMap[key] = {};
-          if (l.team === "home") {
-            hcpMap[key].homeLine = l.line;
-            hcpMap[key].homePoints = l.points;
-            hcpMap[key].homeResult = l.result;
-          } else {
-            hcpMap[key].awayLine = l.line;
-            hcpMap[key].awayPoints = l.points;
-            hcpMap[key].awayResult = l.result;
+          const hcpMap: Record<number, any> = {};
+          for (const l of oldHcp) {
+            const key = l.points;
+            if (!hcpMap[key]) hcpMap[key] = {};
+            if (l.team === "home") {
+              hcpMap[key].homeLine = l.line;
+              hcpMap[key].homePoints = l.points;
+              hcpMap[key].homeResult = l.result;
+            } else {
+              hcpMap[key].awayLine = l.line;
+              hcpMap[key].awayPoints = l.points;
+              hcpMap[key].awayResult = l.result;
+            }
           }
-        }
-        const newHcp = Object.values(hcpMap)
-          .sort((a: any, b: any) => a.homePoints - b.homePoints)
-          .map((h: any) => ({
-            homeLine: h.homeLine ?? null,
-            awayLine: h.awayLine ?? null,
-            homePoints: h.homePoints ?? 0,
-            awayPoints: h.awayPoints ?? 0,
-            homeResult: h.homeResult ?? null,
-            awayResult: h.awayResult ?? null,
-          }));
+          const newHcp = Object.values(hcpMap)
+            .sort((a: any, b: any) => a.homePoints - b.homePoints)
+            .map((h: any) => ({
+              homeLine: h.homeLine ?? null,
+              awayLine: h.awayLine ?? null,
+              homePoints: h.homePoints ?? 0,
+              awayPoints: h.awayPoints ?? 0,
+              homeResult: h.homeResult ?? null,
+              awayResult: h.awayResult ?? null,
+            }));
 
-        // Migrate OU
-        const ouMap: Record<number, any> = {};
-        for (const l of oldOU) {
-          if (!ouMap[l.line]) ouMap[l.line] = {};
-          if (l.type === "over") {
-            ouMap[l.line].overPoints = l.points;
-            ouMap[l.line].overResult = l.result;
-          } else {
-            ouMap[l.line].underPoints = l.points;
-            ouMap[l.line].underResult = l.result;
+          const ouMap: Record<number, any> = {};
+          for (const l of oldOU) {
+            if (!ouMap[l.line]) ouMap[l.line] = {};
+            if (l.type === "over") {
+              ouMap[l.line].overPoints = l.points;
+              ouMap[l.line].overResult = l.result;
+            } else {
+              ouMap[l.line].underPoints = l.points;
+              ouMap[l.line].underResult = l.result;
+            }
           }
-        }
-        const newOU = Object.keys(ouMap)
-          .map(line => ({
-            line: Number(line),
-            overPoints: ouMap[Number(line)].overPoints ?? 0,
-            underPoints: ouMap[Number(line)].underPoints ?? 0,
-            result: ouMap[Number(line)].overResult === "win" ? "over" :
-                    ouMap[Number(line)].underResult === "win" ? "under" : null,
-          }))
-          .sort((a, b) => a.overPoints - b.overPoints);
+          const newOU = Object.keys(ouMap)
+            .map(line => ({
+              line: Number(line),
+              overPoints: ouMap[Number(line)].overPoints ?? 0,
+              underPoints: ouMap[Number(line)].underPoints ?? 0,
+              result: ouMap[Number(line)].overResult === "win" ? "over" :
+                      ouMap[Number(line)].underResult === "win" ? "under" : null,
+            }))
+            .sort((a, b) => a.overPoints - b.overPoints);
 
-        await updateDoc(doc(db, "matchdays", matchdayDoc.id, "games", gameDoc.id), {
-          handicapLines: newHcp,
-          ouLines: newOU,
-        });
+          await updateDoc(doc(db, "matchdays", matchdayDoc.id, "games", gameDoc.id), {
+            handicapLines: newHcp,
+            ouLines: newOU,
+          });
+        }
       }
-    }
-    setMigrated(true);
-  } catch (err) { console.error(err); alert("Error: " + err); }
-  finally { setMigrating(false); }
-};
+      setMigrated(true);
+    } catch (err) { console.error(err); alert("Error: " + err); }
+    finally { setMigrating(false); }
+  };
 
   useEffect(() => {
     if (!loading && (!user || user.email !== ADMIN_EMAIL)) router.push("/");
@@ -141,8 +135,6 @@ const handleMigrate = async () => {
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white" style={{ fontFamily: "'Arial Black', Impact, sans-serif" }}>
-
-      {/* Admin Navbar */}
       <nav className="bg-black border-b-2 border-[#ff751f] h-14 flex items-center px-10 gap-0">
         <a href="/" className="flex items-center gap-0 mr-4">
           <div className="bg-[#ff751f] px-2.5 py-1.5">
@@ -173,8 +165,6 @@ const handleMigrate = async () => {
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-
-          {/* Matchdays */}
           <motion.a initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             href="/admin/matchdays"
             className="border-2 border-white/10 bg-black p-6 hover:border-[#ff751f]/50 transition-all group overflow-hidden">
@@ -184,12 +174,9 @@ const handleMigrate = async () => {
             <div className="text-xs text-gray-600 font-black uppercase tracking-wide" style={{ fontFamily: "Arial, sans-serif" }}>
               Δημιούργησε αγωνιστικές · HCP · O/U
             </div>
-            <div className="mt-4 text-[10px] text-[#ff751f] font-black uppercase tracking-widest">
-              Διαχείριση →
-            </div>
+            <div className="mt-4 text-[10px] text-[#ff751f] font-black uppercase tracking-widest">Διαχείριση →</div>
           </motion.a>
 
-          {/* Challenge */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
             className="border-2 border-white/10 bg-black overflow-hidden">
             <div className="bg-[#ff751f] px-4 py-2">
@@ -198,9 +185,7 @@ const handleMigrate = async () => {
             <div className="p-5">
               <form onSubmit={handleSaveChallenge} className="flex flex-col gap-3">
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>
-                    Περιγραφή
-                  </label>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Περιγραφή</label>
                   <input type="text" value={challengeText} onChange={(e) => setChallengeText(e.target.value)}
                     className="w-full bg-white/5 border-2 border-white/10 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-all"
                     style={{ fontFamily: "Arial, sans-serif" }}
@@ -208,23 +193,18 @@ const handleMigrate = async () => {
                 </div>
                 <div className="grid grid-cols-2 gap-0">
                   <div className="border-2 border-white/10 p-3">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>
-                      Σωστές
-                    </label>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Σωστές</label>
                     <input type="number" value={challengeRequired} onChange={(e) => setChallengeRequired(e.target.value)}
                       className="w-full bg-transparent text-white text-lg font-black focus:outline-none tabular-nums"
                       placeholder="5" required />
                   </div>
                   <div className="border-2 border-white/10 border-l-0 p-3">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>
-                      Bonus πτς
-                    </label>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Bonus πτς</label>
                     <input type="number" value={challengeBonus} onChange={(e) => setChallengeBonus(e.target.value)}
                       className="w-full bg-transparent text-[#ff751f] text-lg font-black focus:outline-none tabular-nums"
                       placeholder="10" required />
                   </div>
                 </div>
-
                 {challengeRequired && challengeBonus && (
                   <div className="border-l-4 border-[#ff751f] pl-3 py-1">
                     <span className="text-[10px] font-black text-gray-400" style={{ fontFamily: "Arial, sans-serif" }}>
@@ -232,18 +212,14 @@ const handleMigrate = async () => {
                     </span>
                   </div>
                 )}
-
                 <div className="border-l-4 border-green-500 pl-3 py-1">
                   <span className="text-[10px] font-black text-gray-400" style={{ fontFamily: "Arial, sans-serif" }}>
                     100% ακρίβεια → <span className="text-green-400">+10 πτς αυτόματα</span>
                   </span>
                 </div>
-
                 <button type="submit" disabled={savingChallenge}
                   className={`font-black px-6 py-3 text-xs uppercase tracking-widest transition-all disabled:opacity-50 border-2 ${
-                    challengeSaved
-                      ? "bg-green-500 border-green-500 text-black"
-                      : "bg-[#ff751f] border-[#ff751f] text-black hover:bg-white hover:border-white"
+                    challengeSaved ? "bg-green-500 border-green-500 text-black" : "bg-[#ff751f] border-[#ff751f] text-black hover:bg-white hover:border-white"
                   }`}>
                   {challengeSaved ? "✓ Αποθηκεύτηκε!" : savingChallenge ? "..." : "Αποθήκευσε"}
                 </button>
@@ -252,19 +228,23 @@ const handleMigrate = async () => {
           </motion.div>
         </div>
 
-        
+        {/* Migration */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+          className="border-2 border-yellow-400/30 bg-black mb-4 overflow-hidden">
+          <div className="bg-yellow-400/10 px-4 py-2 border-b border-yellow-400/20">
+            <span className="text-yellow-400 text-[9px] font-black tracking-[4px] uppercase">⚡ Migration</span>
+          </div>
+          <div className="p-4">
+            <button onClick={handleMigrate} disabled={migrating || migrated}
+              className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-2 disabled:opacity-50 ${
+                migrated ? "border-green-500 text-green-500" : "border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
+              }`}>
+              {migrated ? "✓ Migration ολοκληρώθηκε!" : migrating ? "Migrating..." : "⚡ Migrate HCP/OU Data"}
+            </button>
+          </div>
+        </motion.div>
 
         {/* Quick links */}
-                    <div className="border-t border-white/10 mt-4 pt-4">
-  <div className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-3">Migration</div>
-  <button onClick={handleMigrate} disabled={migrating || migrated}
-    className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-2 disabled:opacity-50 ${
-      migrated ? "border-green-500 text-green-500" : "border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
-    }`}>
-    {migrated ? "✓ Migration ολοκληρώθηκε!" : migrating ? "Migrating..." : "⚡ Migrate HCP/OU Data"}
-  </button>
-</div>
-
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="border-2 border-white/10 bg-black overflow-hidden">
           <div className="bg-white px-4 py-2">
@@ -275,7 +255,7 @@ const handleMigrate = async () => {
               { href: "/leaderboard", label: "Κατάταξη" },
               { href: "/cup", label: "Κύπελλο" },
               { href: "/", label: "Homepage" },
-            ].map((link, i) => (
+            ].map((link) => (
               <a key={link.href} href={link.href}
                 className="px-5 py-3 text-[10px] font-black uppercase tracking-widest text-gray-500 border-r border-white/10 last:border-r-0 hover:text-[#ff751f] hover:bg-white/5 transition-all">
                 {link.label} →
