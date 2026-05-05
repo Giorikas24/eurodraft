@@ -100,8 +100,9 @@ export default function CupPage() {
   </div>
 </div>
 
+        
         {/* How it works */}
-        <div className="border-2 border-white/10 bg-black mb-6 overflow-hidden">
+        {/*<div className="border-2 border-white/10 bg-black mb-6 overflow-hidden">
           <div className="bg-white px-4 py-2">
             <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Πώς λειτουργεί</span>
           </div>
@@ -117,9 +118,10 @@ export default function CupPage() {
               </div>
             ))}
           </div>
-        </div>
+        </div>*/}
+        
 
-        {loading ? (
+        {/*{loading ? (
           <div className="flex flex-col gap-3">
             {[1,2,3,4].map(i => (
               <div key={i} className="h-20 bg-white/[0.02] border-2 border-white/10 animate-pulse"></div>
@@ -137,7 +139,7 @@ export default function CupPage() {
                   transition={{ delay: ci * 0.08 }}
                   className={`border-2 overflow-hidden ${isMyCategory ? "border-opacity-60" : "border-white/10"}`}
                   style={{ borderColor: isMyCategory ? cat.color + "60" : undefined }}
-                >
+                >*/}
                   {/* Category header */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-white/10"
                     style={{ backgroundColor: cat.bg }}>
