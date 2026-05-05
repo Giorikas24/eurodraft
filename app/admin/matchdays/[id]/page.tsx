@@ -48,6 +48,13 @@ interface Game {
 const inputCls = "w-full bg-white/5 border-2 border-white/10 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-all";
 const selectCls = "w-full bg-[#111] border-2 border-white/10 px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-all";
 
+function toDatetimeLocal(date: any) {
+  if (!date) return "";
+  const d = date.toDate ? date.toDate() : new Date(date);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function MatchdayDetailPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -62,6 +69,8 @@ export default function MatchdayDetailPage() {
   const [editingName, setEditingName] = useState(false);
   const [matchdayName, setMatchdayName] = useState("");
   const [savingName, setSavingName] = useState(false);
+
+  // New game form
   const [homeTeam, setHomeTeam] = useState("");
   const [awayTeam, setAwayTeam] = useState("");
   const [date, setDate] = useState("");
@@ -70,9 +79,21 @@ export default function MatchdayDetailPage() {
   const [hcpLines, setHcpLines] = useState<{team: string, line: string, points: string}[]>([{ team: "home", line: "", points: "" }]);
   const [ouLines, setOuLines] = useState<{type: string, line: string, points: string}[]>([{ type: "over", line: "", points: "" }]);
   const [playerProps, setPlayerProps] = useState<{playerName: string, line: string, overPoints: string, underPoints: string}[]>([]);
-  const [editingGameId, setEditingGameId] = useState<string | null>(null);
-  const [editingProps, setEditingProps] = useState<{playerName: string, line: string, overPoints: string, underPoints: string}[]>([]);
-  const [savingProps, setSavingProps] = useState(false);
+
+  // Expand/collapse
+  const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
+
+  // Edit game
+  const [editingFullGameId, setEditingFullGameId] = useState<string | null>(null);
+  const [editHomeTeam, setEditHomeTeam] = useState("");
+  const [editAwayTeam, setEditAwayTeam] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editHomePoints, setEditHomePoints] = useState("");
+  const [editAwayPoints, setEditAwayPoints] = useState("");
+  const [editHcpLines, setEditHcpLines] = useState<{team: string, line: string, points: string}[]>([]);
+  const [editOuLines, setEditOuLines] = useState<{type: string, line: string, points: string}[]>([]);
+  const [editPlayerProps, setEditPlayerProps] = useState<{playerName: string, line: string, overPoints: string, underPoints: string}[]>([]);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || user.email !== ADMIN_EMAIL)) router.push("/");
@@ -131,6 +152,38 @@ export default function MatchdayDetailPage() {
       fetchGames();
     } catch (err) { console.error(err); }
     finally { setSaving(false); }
+  };
+
+  const startEditGame = (g: Game) => {
+    setEditingFullGameId(g.id);
+    setEditHomeTeam(g.homeTeam);
+    setEditAwayTeam(g.awayTeam);
+    setEditDate(toDatetimeLocal(g.date));
+    setEditHomePoints(String(g.homePoints));
+    setEditAwayPoints(String(g.awayPoints));
+    setEditHcpLines((g.handicapLines || []).map(l => ({ team: l.team, line: String(l.line), points: String(l.points) })));
+    setEditOuLines((g.ouLines || []).map(l => ({ type: l.type, line: String(l.line), points: String(l.points) })));
+    setEditPlayerProps((g.playerProps || []).map(p => ({ playerName: p.playerName, line: String(p.line), overPoints: String(p.overPoints), underPoints: String(p.underPoints) })));
+  };
+
+  const handleSaveEdit = async (gameId: string) => {
+    setSavingEdit(true);
+    try {
+      const handicapLines = editHcpLines.filter(l => l.line && l.points).map(l => ({ team: l.team, line: parseFloat(l.line), points: parseInt(l.points), result: null }));
+      const ouLinesData = editOuLines.filter(l => l.line && l.points).map(l => ({ type: l.type, line: parseFloat(l.line), points: parseInt(l.points), result: null }));
+      const playerPropsData = editPlayerProps.filter(p => p.playerName && p.line && p.overPoints && p.underPoints).map(p => ({
+        playerName: p.playerName, line: parseFloat(p.line), overPoints: parseInt(p.overPoints), underPoints: parseInt(p.underPoints), result: null,
+      }));
+      await updateDoc(doc(db, "matchdays", matchdayId, "games", gameId), {
+        homeTeam: editHomeTeam, awayTeam: editAwayTeam,
+        date: new Date(editDate),
+        homePoints: parseInt(editHomePoints), awayPoints: parseInt(editAwayPoints),
+        handicapLines, ouLines: ouLinesData, playerProps: playerPropsData,
+      });
+      setEditingFullGameId(null);
+      fetchGames();
+    } catch (err) { console.error(err); }
+    finally { setSavingEdit(false); }
   };
 
   const handleDelete = async (gameId: string) => {
@@ -233,22 +286,6 @@ export default function MatchdayDetailPage() {
     finally { setGrading(null); }
   };
 
-  const handleSavePlayerProps = async (gameId: string) => {
-    setSavingProps(true);
-    try {
-      const playerPropsData = editingProps
-        .filter(p => p.playerName && p.line && p.overPoints && p.underPoints)
-        .map(p => ({
-          playerName: p.playerName, line: parseFloat(p.line),
-          overPoints: parseInt(p.overPoints), underPoints: parseInt(p.underPoints), result: null,
-        }));
-      await updateDoc(doc(db, "matchdays", matchdayId, "games", gameId), { playerProps: playerPropsData });
-      setEditingGameId(null);
-      fetchGames();
-    } catch (err) { console.error(err); }
-    finally { setSavingProps(false); }
-  };
-
   const formatDate = (date: any) => {
     if (!date) return "";
     const d = date.toDate ? date.toDate() : new Date(date);
@@ -334,13 +371,10 @@ export default function MatchdayDetailPage() {
                     </select>
                   </div>
                 </div>
-
                 <div>
                   <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Ημερομηνία</label>
                   <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} required />
                 </div>
-
-                {/* 1/2 */}
                 <div className="border-2 border-white/10 overflow-hidden">
                   <div className="bg-[#ff751f] px-3 py-1.5">
                     <span className="text-black text-[9px] font-black uppercase tracking-widest">1/2 — Νικητής</span>
@@ -356,8 +390,6 @@ export default function MatchdayDetailPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* HCP */}
                 <div className="border-2 border-white/10 overflow-hidden">
                   <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
                     <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">Handicap Lines</span>
@@ -388,8 +420,6 @@ export default function MatchdayDetailPage() {
                     ))}
                   </div>
                 </div>
-
-                {/* OU */}
                 <div className="border-2 border-white/10 overflow-hidden">
                   <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
                     <span className="text-[9px] font-black uppercase tracking-widest text-green-400">Over/Under Lines</span>
@@ -415,8 +445,6 @@ export default function MatchdayDetailPage() {
                     ))}
                   </div>
                 </div>
-
-                {/* Player Props */}
                 <div className="border-2 border-white/10 overflow-hidden">
                   <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
                     <span className="text-[9px] font-black uppercase tracking-widest text-yellow-400">Player Props</span>
@@ -435,22 +463,19 @@ export default function MatchdayDetailPage() {
                               className="text-red-400 text-xs px-2 py-1 border border-white/10 hover:border-red-500 transition-all">✕</button>
                           </div>
                           <input type="text" value={p.playerName} onChange={(e) => { const u = [...playerProps]; u[i].playerName = e.target.value; setPlayerProps(u); }}
-                            className={inputCls} style={{ fontFamily: "Arial, sans-serif" }} placeholder="Όνομα παίκτη (π.χ. Σλούκας)" />
+                            className={inputCls} style={{ fontFamily: "Arial, sans-serif" }} placeholder="Όνομα παίκτη" />
                           <div className="grid grid-cols-3 gap-2">
                             <div>
                               <label className="text-[9px] text-gray-600 mb-1 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Γραμμή</label>
-                              <input type="number" step="0.5" value={p.line} onChange={(e) => { const u = [...playerProps]; u[i].line = e.target.value; setPlayerProps(u); }}
-                                className={inputCls} placeholder="19.5" />
+                              <input type="number" step="0.5" value={p.line} onChange={(e) => { const u = [...playerProps]; u[i].line = e.target.value; setPlayerProps(u); }} className={inputCls} placeholder="19.5" />
                             </div>
                             <div>
                               <label className="text-[9px] text-gray-600 mb-1 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Over πτς</label>
-                              <input type="number" step="1" min="1" max="9" value={p.overPoints} onChange={(e) => { const u = [...playerProps]; u[i].overPoints = e.target.value; setPlayerProps(u); }}
-                                className={inputCls} placeholder="6" />
+                              <input type="number" step="1" min="1" max="9" value={p.overPoints} onChange={(e) => { const u = [...playerProps]; u[i].overPoints = e.target.value; setPlayerProps(u); }} className={inputCls} placeholder="6" />
                             </div>
                             <div>
                               <label className="text-[9px] text-gray-600 mb-1 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Under πτς</label>
-                              <input type="number" step="1" min="1" max="9" value={p.underPoints} onChange={(e) => { const u = [...playerProps]; u[i].underPoints = e.target.value; setPlayerProps(u); }}
-                                className={inputCls} placeholder="4" />
+                              <input type="number" step="1" min="1" max="9" value={p.underPoints} onChange={(e) => { const u = [...playerProps]; u[i].underPoints = e.target.value; setPlayerProps(u); }} className={inputCls} placeholder="4" />
                             </div>
                           </div>
                         </div>
@@ -458,7 +483,6 @@ export default function MatchdayDetailPage() {
                     </div>
                   )}
                 </div>
-
                 <div className="flex gap-0">
                   <button type="submit" disabled={saving}
                     className="bg-[#ff751f] text-black font-black px-6 py-3 text-xs uppercase tracking-widest hover:bg-white disabled:opacity-50 transition-all border-2 border-[#ff751f]">
@@ -490,196 +514,304 @@ export default function MatchdayDetailPage() {
               <div className="text-gray-600 text-[10px] uppercase font-black tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>Δεν υπάρχουν ματς ακόμα.</div>
             </div>
           )}
-          {games.map((g) => (
-            <div key={g.id} className="border-2 border-white/10 bg-black overflow-hidden">
-              {/* Game header */}
-              <div className="flex items-center justify-between px-4 py-3 bg-white/[0.03] border-b border-white/10">
-                <div>
-                  <div className="text-sm font-black uppercase">{g.homeTeam} <span className="text-[#ff751f]">vs</span> {g.awayTeam}</div>
-                  <div className="text-[10px] text-gray-600 mt-0.5 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{formatDate(g.date)}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[9px] px-2 py-1 font-black uppercase tracking-widest border ${
-                    g.status === "pending" ? "border-white/20 text-gray-500" :
-                    g.status === "live" ? "bg-[#ff751f] border-[#ff751f] text-black" :
-                    "border-green-500/30 text-green-400"
-                  }`}>
-                    {g.status === "pending" ? "Αναμονή" : g.status === "live" ? "LIVE" : "✓ Τελικό"}
-                  </span>
-                  <button onClick={() => {
-                    setEditingGameId(editingGameId === g.id ? null : g.id);
-                    setEditingProps((g.playerProps || []).map(p => ({
-                      playerName: p.playerName, line: String(p.line),
-                      overPoints: String(p.overPoints), underPoints: String(p.underPoints),
-                    })));
-                  }}
-                    className={`text-[10px] border-2 px-2.5 py-1 font-black transition-all ${
-                      editingGameId === g.id ? "border-yellow-400 text-yellow-400" : "border-white/10 text-gray-600 hover:border-yellow-400 hover:text-yellow-400"
-                    }`}>Props</button>
-                  <button onClick={() => handleDelete(g.id)}
-                    className="text-[10px] border-2 border-white/10 text-gray-600 px-2.5 py-1 font-black hover:border-red-500 hover:text-red-400 transition-all">✕</button>
-                </div>
-              </div>
+          {games.map((g) => {
+            const isExpanded = expandedGameId === g.id;
+            const isEditingFull = editingFullGameId === g.id;
 
-              <div className="p-4 flex flex-col gap-4">
-                {/* 1/2 */}
-                <div>
-                  <div className="text-[9px] font-black uppercase tracking-widest text-[#ff751f] mb-2">
-                    1/2 {g.result ? `→ ${g.result === "home" ? g.homeTeam : g.awayTeam}` : "— Ορισμός αποτελέσματος"}
-                  </div>
-                  <div className="flex gap-0">
-                    <button onClick={() => handleSetResult(g, "home")} disabled={!!grading}
-                      className={`flex-1 py-2.5 text-xs font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                        g.result === "home" ? "bg-[#ff751f] border-[#ff751f] text-black" : "bg-transparent border-white/10 text-white hover:border-[#ff751f]/50"
-                      }`}>{g.homeTeam}</button>
-                    <button onClick={() => handleSetResult(g, "away")} disabled={!!grading}
-                      className={`flex-1 py-2.5 text-xs font-black uppercase tracking-widest border-2 border-l-0 transition-all disabled:opacity-50 ${
-                        g.result === "away" ? "bg-[#ff751f] border-[#ff751f] text-black" : "bg-transparent border-white/10 text-white hover:border-[#ff751f]/50"
-                      }`}>{g.awayTeam}</button>
-                  </div>
-                </div>
+            return (
+              <div key={g.id} className="border-2 border-white/10 bg-black overflow-hidden">
 
-                {/* HCP */}
-                {g.handicapLines?.length > 0 && (
-                  <div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-2">Handicap</div>
-                    <div className="flex flex-col gap-2">
-                      {g.handicapLines.map((l, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400 w-36 flex-shrink-0 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>
-                            {l.team === "home" ? g.homeTeam : g.awayTeam} {l.line > 0 ? "+" : ""}{l.line}
-                            <span className="text-[#ff751f] ml-1">+{l.points}πτς</span>
-                          </span>
-                          <button onClick={() => handleSetHCPResult(g, i, true)} disabled={!!grading}
-                            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                              l.result === "win" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
-                            }`}>✓ Κέρδισε</button>
-                          <button onClick={() => handleSetHCPResult(g, i, false)} disabled={!!grading}
-                            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                              l.result === "loss" ? "bg-red-700 border-red-700 text-white" : "border-white/10 text-white hover:border-red-500"
-                            }`}>✗ Έχασε</button>
-                        </div>
-                      ))}
+                {/* Collapsed header — always visible */}
+                <button
+                  onClick={() => setExpandedGameId(isExpanded ? null : g.id)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white/[0.03] hover:bg-white/[0.06] transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-[#ff751f] font-black text-lg">{isExpanded ? "▼" : "▶"}</span>
+                    <div className="text-left">
+                      <div className="text-sm font-black uppercase">{g.homeTeam} <span className="text-[#ff751f]">vs</span> {g.awayTeam}</div>
+                      <div className="text-[10px] text-gray-600 mt-0.5 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{formatDate(g.date)}</div>
                     </div>
                   </div>
-                )}
-
-                {/* OU */}
-                {g.ouLines?.length > 0 && (
-                  <div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-green-400 mb-2">Over / Under</div>
-                    <div className="flex flex-col gap-2">
-                      {g.ouLines.map((l, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400 w-36 flex-shrink-0 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>
-                            {l.type === "over" ? "Over" : "Under"} {l.line}
-                            <span className="text-[#ff751f] ml-1">+{l.points}πτς</span>
-                          </span>
-                          <button onClick={() => handleSetOUResult(g, i, true)} disabled={!!grading}
-                            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                              l.result === "win" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
-                            }`}>✓ Κέρδισε</button>
-                          <button onClick={() => handleSetOUResult(g, i, false)} disabled={!!grading}
-                            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                              l.result === "loss" ? "bg-red-700 border-red-700 text-white" : "border-white/10 text-white hover:border-red-500"
-                            }`}>✗ Έχασε</button>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <span className={`text-[9px] px-2 py-1 font-black uppercase tracking-widest border ${
+                      g.status === "pending" ? "border-white/20 text-gray-500" :
+                      g.status === "live" ? "bg-[#ff751f] border-[#ff751f] text-black" :
+                      "border-green-500/30 text-green-400"
+                    }`}>
+                      {g.status === "pending" ? "Αναμονή" : g.status === "live" ? "LIVE" : "✓ Τελικό"}
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (isEditingFull) { setEditingFullGameId(null); }
+                        else { startEditGame(g); setExpandedGameId(g.id); }
+                      }}
+                      className={`text-[10px] border-2 px-2.5 py-1 font-black transition-all ${
+                        isEditingFull ? "border-[#ff751f] text-[#ff751f]" : "border-white/10 text-gray-600 hover:border-[#ff751f] hover:text-[#ff751f]"
+                      }`}>✏️ Edit</button>
+                    <button onClick={() => handleDelete(g.id)}
+                      className="text-[10px] border-2 border-white/10 text-gray-600 px-2.5 py-1 font-black hover:border-red-500 hover:text-red-400 transition-all">✕</button>
                   </div>
-                )}
+                </button>
 
-                {/* Player Props Results */}
-                {g.playerProps?.length > 0 && (
-                  <div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-yellow-400 mb-2">Player Props</div>
-                    <div className="flex flex-col gap-2">
-                      {g.playerProps.map((p, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400 w-36 flex-shrink-0 font-black uppercase leading-tight" style={{ fontFamily: "Arial, sans-serif" }}>
-                            {p.playerName}<br />
-                            <span className="text-yellow-400">{p.line} pts</span>
-                          </span>
-                          <button onClick={() => handleSetPlayerPropResult(g, i, "over")} disabled={!!grading}
-                            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                              p.result === "over" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
-                            }`}>Over +{p.overPoints}πτς</button>
-                          <button onClick={() => handleSetPlayerPropResult(g, i, "under")} disabled={!!grading}
-                            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                              p.result === "under" ? "bg-red-700 border-red-700 text-white" : "border-white/10 text-white hover:border-red-500"
-                            }`}>Under +{p.underPoints}πτς</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+                {/* Expanded content */}
+                {isExpanded && (
+                  <div className="border-t border-white/10">
 
-              {/* Edit Player Props */}
-              {editingGameId === g.id && (
-                <div className="border-t-2 border-yellow-400/30 bg-yellow-400/5 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-yellow-400">Επεξεργασία Player Props</span>
-                    <button type="button" onClick={() => setEditingProps([...editingProps, { playerName: "", line: "", overPoints: "", underPoints: "" }])}
-                      className="text-[9px] text-[#ff751f] border border-[#ff751f]/30 px-2 py-1 font-black uppercase hover:bg-[#ff751f]/10 transition-all">
-                      + Παίκτης
-                    </button>
-                  </div>
-                  {editingProps.length === 0 ? (
-                    <div className="text-[10px] text-gray-600 font-black uppercase mb-3" style={{ fontFamily: "Arial, sans-serif" }}>
-                      Κανένα prop. Πάτα + για να προσθέσεις.
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3 mb-3">
-                      {editingProps.map((p, i) => (
-                        <div key={i} className="flex flex-col gap-2 border border-white/10 p-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] text-yellow-400 font-black uppercase tracking-widest">Παίκτης {i + 1}</span>
-                            <button type="button" onClick={() => setEditingProps(editingProps.filter((_, j) => j !== i))}
-                              className="text-red-400 text-xs px-2 py-1 border border-white/10 hover:border-red-500 transition-all">✕</button>
+                    {/* EDIT MODE */}
+                    {isEditingFull ? (
+                      <div className="p-4 flex flex-col gap-4">
+                        <div className="flex items-center gap-0 mb-2">
+                          <div className="bg-[#ff751f] px-3 py-1">
+                            <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Επεξεργασία Ματς</span>
                           </div>
-                          <input type="text" value={p.playerName}
-                            onChange={(e) => { const u = [...editingProps]; u[i].playerName = e.target.value; setEditingProps(u); }}
-                            className={inputCls} style={{ fontFamily: "Arial, sans-serif" }}
-                            placeholder="Όνομα παίκτη (π.χ. Σλούκας)" />
-                          <div className="grid grid-cols-3 gap-2">
+                        </div>
+
+                        {/* Teams */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Γηπεδούχος</label>
+                            <select value={editHomeTeam} onChange={(e) => setEditHomeTeam(e.target.value)} className={selectCls}>
+                              {EUROLEAGUE_TEAMS.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Φιλοξενούμενος</label>
+                            <select value={editAwayTeam} onChange={(e) => setEditAwayTeam(e.target.value)} className={selectCls}>
+                              {EUROLEAGUE_TEAMS.filter(t => t.name !== editHomeTeam).map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Date */}
+                        <div>
+                          <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Ημερομηνία</label>
+                          <input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} className={inputCls} />
+                        </div>
+
+                        {/* 1/2 points */}
+                        <div className="border-2 border-white/10 overflow-hidden">
+                          <div className="bg-[#ff751f] px-3 py-1.5">
+                            <span className="text-black text-[9px] font-black uppercase tracking-widest">1/2 — Πόντοι</span>
+                          </div>
+                          <div className="p-3 grid grid-cols-2 gap-3">
                             <div>
-                              <label className="text-[9px] text-gray-600 mb-1 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Γραμμή</label>
-                              <input type="number" step="0.5" value={p.line}
-                                onChange={(e) => { const u = [...editingProps]; u[i].line = e.target.value; setEditingProps(u); }}
-                                className={inputCls} placeholder="19.5" />
+                              <label className="text-[9px] text-gray-600 mb-1.5 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Πτς {editHomeTeam}</label>
+                              <input type="number" step="1" min="1" max="9" value={editHomePoints} onChange={(e) => setEditHomePoints(e.target.value)} className={inputCls} />
                             </div>
                             <div>
-                              <label className="text-[9px] text-gray-600 mb-1 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Over πτς</label>
-                              <input type="number" step="1" min="1" max="9" value={p.overPoints}
-                                onChange={(e) => { const u = [...editingProps]; u[i].overPoints = e.target.value; setEditingProps(u); }}
-                                className={inputCls} placeholder="6" />
-                            </div>
-                            <div>
-                              <label className="text-[9px] text-gray-600 mb-1 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Under πτς</label>
-                              <input type="number" step="1" min="1" max="9" value={p.underPoints}
-                                onChange={(e) => { const u = [...editingProps]; u[i].underPoints = e.target.value; setEditingProps(u); }}
-                                className={inputCls} placeholder="4" />
+                              <label className="text-[9px] text-gray-600 mb-1.5 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Πτς {editAwayTeam}</label>
+                              <input type="number" step="1" min="1" max="9" value={editAwayPoints} onChange={(e) => setEditAwayPoints(e.target.value)} className={inputCls} />
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex gap-0">
-                    <button onClick={() => handleSavePlayerProps(g.id)} disabled={savingProps}
-                      className="bg-yellow-400 text-black font-black px-5 py-2.5 text-xs uppercase tracking-widest hover:bg-white disabled:opacity-50 transition-all border-2 border-yellow-400">
-                      {savingProps ? "..." : "Αποθήκευσε"}
-                    </button>
-                    <button onClick={() => setEditingGameId(null)}
-                      className="border-2 border-white/20 text-gray-400 px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:border-white transition-all">
-                      Ακύρωση
-                    </button>
+
+                        {/* HCP */}
+                        <div className="border-2 border-white/10 overflow-hidden">
+                          <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">Handicap Lines</span>
+                            <button type="button" onClick={() => setEditHcpLines([...editHcpLines, { team: "home", line: "", points: "" }])}
+                              className="text-[9px] text-[#ff751f] border border-[#ff751f]/30 px-2 py-1 font-black uppercase hover:bg-[#ff751f]/10 transition-all">+ Γραμμή</button>
+                          </div>
+                          <div className="p-3 flex flex-col gap-2">
+                            {editHcpLines.length === 0 && <div className="text-[10px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Καμία γραμμή.</div>}
+                            {editHcpLines.map((l, i) => (
+                              <div key={i} className="flex gap-2 items-center">
+                                <select value={l.team} onChange={(e) => { const u = [...editHcpLines]; u[i].team = e.target.value; setEditHcpLines(u); }} className="flex-1 bg-[#111] border-2 border-white/10 px-2 py-2 text-xs text-white focus:outline-none focus:border-[#ff751f]">
+                                  <option value="home">{editHomeTeam || "Γηπ."}</option>
+                                  <option value="away">{editAwayTeam || "Φιλ."}</option>
+                                </select>
+                                <input type="number" step="0.5" value={l.line} onChange={(e) => { const u = [...editHcpLines]; u[i].line = e.target.value; setEditHcpLines(u); }}
+                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="-18.5" />
+                                <input type="number" step="1" min="1" max="9" value={l.points} onChange={(e) => { const u = [...editHcpLines]; u[i].points = e.target.value; setEditHcpLines(u); }}
+                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="9" />
+                                <button type="button" onClick={() => setEditHcpLines(editHcpLines.filter((_, j) => j !== i))}
+                                  className="text-red-400 text-xs px-2 py-2 border-2 border-white/10 hover:border-red-500 transition-all">✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* OU */}
+                        <div className="border-2 border-white/10 overflow-hidden">
+                          <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-green-400">Over/Under Lines</span>
+                            <button type="button" onClick={() => setEditOuLines([...editOuLines, { type: "over", line: "", points: "" }])}
+                              className="text-[9px] text-[#ff751f] border border-[#ff751f]/30 px-2 py-1 font-black uppercase hover:bg-[#ff751f]/10 transition-all">+ Γραμμή</button>
+                          </div>
+                          <div className="p-3 flex flex-col gap-2">
+                            {editOuLines.length === 0 && <div className="text-[10px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Καμία γραμμή.</div>}
+                            {editOuLines.map((l, i) => (
+                              <div key={i} className="flex gap-2 items-center">
+                                <select value={l.type} onChange={(e) => { const u = [...editOuLines]; u[i].type = e.target.value; setEditOuLines(u); }} className="flex-1 bg-[#111] border-2 border-white/10 px-2 py-2 text-xs text-white focus:outline-none focus:border-[#ff751f]">
+                                  <option value="over">Over</option>
+                                  <option value="under">Under</option>
+                                </select>
+                                <input type="number" step="0.5" value={l.line} onChange={(e) => { const u = [...editOuLines]; u[i].line = e.target.value; setEditOuLines(u); }}
+                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="160.5" />
+                                <input type="number" step="1" min="1" max="9" value={l.points} onChange={(e) => { const u = [...editOuLines]; u[i].points = e.target.value; setEditOuLines(u); }}
+                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="5" />
+                                <button type="button" onClick={() => setEditOuLines(editOuLines.filter((_, j) => j !== i))}
+                                  className="text-red-400 text-xs px-2 py-2 border-2 border-white/10 hover:border-red-500 transition-all">✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Player Props */}
+                        <div className="border-2 border-white/10 overflow-hidden">
+                          <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-yellow-400">Player Props</span>
+                            <button type="button" onClick={() => setEditPlayerProps([...editPlayerProps, { playerName: "", line: "", overPoints: "", underPoints: "" }])}
+                              className="text-[9px] text-[#ff751f] border border-[#ff751f]/30 px-2 py-1 font-black uppercase hover:bg-[#ff751f]/10 transition-all">+ Παίκτης</button>
+                          </div>
+                          {editPlayerProps.length === 0 ? (
+                            <div className="p-3 text-[10px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Κανένα prop.</div>
+                          ) : (
+                            <div className="p-3 flex flex-col gap-3">
+                              {editPlayerProps.map((p, i) => (
+                                <div key={i} className="flex flex-col gap-2 border border-white/10 p-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[9px] text-yellow-400 font-black uppercase tracking-widest">Παίκτης {i + 1}</span>
+                                    <button type="button" onClick={() => setEditPlayerProps(editPlayerProps.filter((_, j) => j !== i))}
+                                      className="text-red-400 text-xs px-2 py-1 border border-white/10 hover:border-red-500 transition-all">✕</button>
+                                  </div>
+                                  <input type="text" value={p.playerName} onChange={(e) => { const u = [...editPlayerProps]; u[i].playerName = e.target.value; setEditPlayerProps(u); }}
+                                    className={inputCls} style={{ fontFamily: "Arial, sans-serif" }} placeholder="Όνομα παίκτη" />
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                      <label className="text-[9px] text-gray-600 mb-1 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Γραμμή</label>
+                                      <input type="number" step="0.5" value={p.line} onChange={(e) => { const u = [...editPlayerProps]; u[i].line = e.target.value; setEditPlayerProps(u); }} className={inputCls} placeholder="19.5" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[9px] text-gray-600 mb-1 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Over πτς</label>
+                                      <input type="number" step="1" min="1" max="9" value={p.overPoints} onChange={(e) => { const u = [...editPlayerProps]; u[i].overPoints = e.target.value; setEditPlayerProps(u); }} className={inputCls} placeholder="6" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[9px] text-gray-600 mb-1 block font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Under πτς</label>
+                                      <input type="number" step="1" min="1" max="9" value={p.underPoints} onChange={(e) => { const u = [...editPlayerProps]; u[i].underPoints = e.target.value; setEditPlayerProps(u); }} className={inputCls} placeholder="4" />
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Save/Cancel */}
+                        <div className="flex gap-0">
+                          <button onClick={() => handleSaveEdit(g.id)} disabled={savingEdit}
+                            className="bg-[#ff751f] text-black font-black px-6 py-3 text-xs uppercase tracking-widest hover:bg-white disabled:opacity-50 transition-all border-2 border-[#ff751f]">
+                            {savingEdit ? "..." : "Αποθήκευσε"}
+                          </button>
+                          <button onClick={() => setEditingFullGameId(null)}
+                            className="border-2 border-white/20 text-gray-400 px-5 py-3 text-xs font-black uppercase tracking-widest hover:border-white transition-all">
+                            Ακύρωση
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* VIEW MODE */
+                      <div className="p-4 flex flex-col gap-4">
+
+                        {/* 1/2 */}
+                        <div>
+                          <div className="text-[9px] font-black uppercase tracking-widest text-[#ff751f] mb-2">
+                            1/2 {g.result ? `→ ${g.result === "home" ? g.homeTeam : g.awayTeam}` : "— Ορισμός αποτελέσματος"}
+                          </div>
+                          <div className="flex gap-0">
+                            <button onClick={() => handleSetResult(g, "home")} disabled={!!grading}
+                              className={`flex-1 py-2.5 text-xs font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
+                                g.result === "home" ? "bg-[#ff751f] border-[#ff751f] text-black" : "bg-transparent border-white/10 text-white hover:border-[#ff751f]/50"
+                              }`}>{g.homeTeam} +{g.homePoints}πτς</button>
+                            <button onClick={() => handleSetResult(g, "away")} disabled={!!grading}
+                              className={`flex-1 py-2.5 text-xs font-black uppercase tracking-widest border-2 border-l-0 transition-all disabled:opacity-50 ${
+                                g.result === "away" ? "bg-[#ff751f] border-[#ff751f] text-black" : "bg-transparent border-white/10 text-white hover:border-[#ff751f]/50"
+                              }`}>{g.awayTeam} +{g.awayPoints}πτς</button>
+                          </div>
+                        </div>
+
+                        {/* HCP */}
+                        {g.handicapLines?.length > 0 && (
+                          <div>
+                            <div className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-2">Handicap</div>
+                            <div className="flex flex-col gap-2">
+                              {g.handicapLines.map((l, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                  <span className="text-[10px] text-gray-400 w-40 flex-shrink-0 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>
+                                    {l.team === "home" ? g.homeTeam : g.awayTeam} {l.line > 0 ? "+" : ""}{l.line}
+                                    <span className="text-[#ff751f] ml-1">+{l.points}πτς</span>
+                                  </span>
+                                  <button onClick={() => handleSetHCPResult(g, i, true)} disabled={!!grading}
+                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
+                                      l.result === "win" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
+                                    }`}>✓ Κέρδισε</button>
+                                  <button onClick={() => handleSetHCPResult(g, i, false)} disabled={!!grading}
+                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
+                                      l.result === "loss" ? "bg-red-700 border-red-700 text-white" : "border-white/10 text-white hover:border-red-500"
+                                    }`}>✗ Έχασε</button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* OU */}
+                        {g.ouLines?.length > 0 && (
+                          <div>
+                            <div className="text-[9px] font-black uppercase tracking-widest text-green-400 mb-2">Over / Under</div>
+                            <div className="flex flex-col gap-2">
+                              {g.ouLines.map((l, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                  <span className="text-[10px] text-gray-400 w-40 flex-shrink-0 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>
+                                    {l.type === "over" ? "Over" : "Under"} {l.line}
+                                    <span className="text-[#ff751f] ml-1">+{l.points}πτς</span>
+                                  </span>
+                                  <button onClick={() => handleSetOUResult(g, i, true)} disabled={!!grading}
+                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
+                                      l.result === "win" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
+                                    }`}>✓ Κέρδισε</button>
+                                  <button onClick={() => handleSetOUResult(g, i, false)} disabled={!!grading}
+                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
+                                      l.result === "loss" ? "bg-red-700 border-red-700 text-white" : "border-white/10 text-white hover:border-red-500"
+                                    }`}>✗ Έχασε</button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Player Props */}
+                        {g.playerProps?.length > 0 && (
+                          <div>
+                            <div className="text-[9px] font-black uppercase tracking-widest text-yellow-400 mb-2">Player Props</div>
+                            <div className="flex flex-col gap-2">
+                              {g.playerProps.map((p, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                  <span className="text-[10px] text-gray-400 w-40 flex-shrink-0 font-black uppercase leading-tight" style={{ fontFamily: "Arial, sans-serif" }}>
+                                    {p.playerName}<br />
+                                    <span className="text-yellow-400">{p.line} pts</span>
+                                  </span>
+                                  <button onClick={() => handleSetPlayerPropResult(g, i, "over")} disabled={!!grading}
+                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
+                                      p.result === "over" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
+                                    }`}>Over +{p.overPoints}πτς</button>
+                                  <button onClick={() => handleSetPlayerPropResult(g, i, "under")} disabled={!!grading}
+                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
+                                      p.result === "under" ? "bg-red-700 border-red-700 text-white" : "border-white/10 text-white hover:border-red-500"
+                                    }`}>Under +{p.underPoints}πτς</button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </main>
