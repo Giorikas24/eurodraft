@@ -10,17 +10,19 @@ import { EUROLEAGUE_TEAMS } from "@/lib/teams";
 const ADMIN_EMAIL = "georgelipas05@gmail.com";
 
 interface HCPLine {
-  team: "home" | "away";
-  line: number;
-  points: number;
-  result: string | null;
+  homeLine: number;
+  awayLine: number;
+  homePoints: number;
+  awayPoints: number;
+  homeResult: string | null;
+  awayResult: string | null;
 }
 
 interface OULine {
-  type: "over" | "under";
   line: number;
-  points: number;
-  result: string | null;
+  overPoints: number;
+  underPoints: number;
+  result: "over" | "under" | null;
 }
 
 interface PlayerProp {
@@ -76,8 +78,8 @@ export default function MatchdayDetailPage() {
   const [date, setDate] = useState("");
   const [homePoints, setHomePoints] = useState("");
   const [awayPoints, setAwayPoints] = useState("");
-  const [hcpLines, setHcpLines] = useState<{team: string, line: string, points: string}[]>([{ team: "home", line: "", points: "" }]);
-  const [ouLines, setOuLines] = useState<{type: string, line: string, points: string}[]>([{ type: "over", line: "", points: "" }]);
+  const [hcpLines, setHcpLines] = useState<{homeLine: string, awayLine: string, points: string}[]>([{ homeLine: "", awayLine: "", points: "" }]);
+  const [ouLines, setOuLines] = useState<{line: string, overPoints: string, underPoints: string}[]>([{ line: "", overPoints: "", underPoints: "" }]);
   const [playerProps, setPlayerProps] = useState<{playerName: string, line: string, overPoints: string, underPoints: string}[]>([]);
 
   // Expand/collapse
@@ -90,8 +92,8 @@ export default function MatchdayDetailPage() {
   const [editDate, setEditDate] = useState("");
   const [editHomePoints, setEditHomePoints] = useState("");
   const [editAwayPoints, setEditAwayPoints] = useState("");
-  const [editHcpLines, setEditHcpLines] = useState<{team: string, line: string, points: string}[]>([]);
-  const [editOuLines, setEditOuLines] = useState<{type: string, line: string, points: string}[]>([]);
+  const [editHcpLines, setEditHcpLines] = useState<{homeLine: string, awayLine: string, points: string}[]>([]);
+  const [editOuLines, setEditOuLines] = useState<{line: string, overPoints: string, underPoints: string}[]>([]);
   const [editPlayerProps, setEditPlayerProps] = useState<{playerName: string, line: string, overPoints: string, underPoints: string}[]>([]);
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -132,8 +134,14 @@ export default function MatchdayDetailPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const handicapLines = hcpLines.filter(l => l.line && l.points).map(l => ({ team: l.team, line: parseFloat(l.line), points: parseInt(l.points), result: null }));
-      const ouLinesData = ouLines.filter(l => l.line && l.points).map(l => ({ type: l.type, line: parseFloat(l.line), points: parseInt(l.points), result: null }));
+      const handicapLines = hcpLines.filter(l => l.homeLine && l.awayLine && l.points).map(l => ({
+        homeLine: parseFloat(l.homeLine), awayLine: parseFloat(l.awayLine),
+        homePoints: parseInt(l.points), awayPoints: parseInt(l.points),
+        homeResult: null, awayResult: null,
+      }));
+      const ouLinesData = ouLines.filter(l => l.line && l.overPoints && l.underPoints).map(l => ({
+        line: parseFloat(l.line), overPoints: parseInt(l.overPoints), underPoints: parseInt(l.underPoints), result: null,
+      }));
       const playerPropsData = playerProps.filter(p => p.playerName && p.line && p.overPoints && p.underPoints).map(p => ({
         playerName: p.playerName, line: parseFloat(p.line), overPoints: parseInt(p.overPoints), underPoints: parseInt(p.underPoints), result: null,
       }));
@@ -145,8 +153,8 @@ export default function MatchdayDetailPage() {
       });
       setHomeTeam(""); setAwayTeam(""); setDate("");
       setHomePoints(""); setAwayPoints("");
-      setHcpLines([{ team: "home", line: "", points: "" }]);
-      setOuLines([{ type: "over", line: "", points: "" }]);
+      setHcpLines([{ homeLine: "", awayLine: "", points: "" }]);
+      setOuLines([{ line: "", overPoints: "", underPoints: "" }]);
       setPlayerProps([]);
       setShowForm(false);
       fetchGames();
@@ -161,16 +169,22 @@ export default function MatchdayDetailPage() {
     setEditDate(toDatetimeLocal(g.date));
     setEditHomePoints(String(g.homePoints));
     setEditAwayPoints(String(g.awayPoints));
-    setEditHcpLines((g.handicapLines || []).map(l => ({ team: l.team, line: String(l.line), points: String(l.points) })));
-    setEditOuLines((g.ouLines || []).map(l => ({ type: l.type, line: String(l.line), points: String(l.points) })));
+    setEditHcpLines((g.handicapLines || []).map(l => ({ homeLine: String(l.homeLine), awayLine: String(l.awayLine), points: String(l.homePoints) })));
+    setEditOuLines((g.ouLines || []).map(l => ({ line: String(l.line), overPoints: String(l.overPoints), underPoints: String(l.underPoints) })));
     setEditPlayerProps((g.playerProps || []).map(p => ({ playerName: p.playerName, line: String(p.line), overPoints: String(p.overPoints), underPoints: String(p.underPoints) })));
   };
 
   const handleSaveEdit = async (gameId: string) => {
     setSavingEdit(true);
     try {
-      const handicapLines = editHcpLines.filter(l => l.line && l.points).map(l => ({ team: l.team, line: parseFloat(l.line), points: parseInt(l.points), result: null }));
-      const ouLinesData = editOuLines.filter(l => l.line && l.points).map(l => ({ type: l.type, line: parseFloat(l.line), points: parseInt(l.points), result: null }));
+      const handicapLines = editHcpLines.filter(l => l.homeLine && l.awayLine && l.points).map(l => ({
+        homeLine: parseFloat(l.homeLine), awayLine: parseFloat(l.awayLine),
+        homePoints: parseInt(l.points), awayPoints: parseInt(l.points),
+        homeResult: null, awayResult: null,
+      }));
+      const ouLinesData = editOuLines.filter(l => l.line && l.overPoints && l.underPoints).map(l => ({
+        line: parseFloat(l.line), overPoints: parseInt(l.overPoints), underPoints: parseInt(l.underPoints), result: null,
+      }));
       const playerPropsData = editPlayerProps.filter(p => p.playerName && p.line && p.overPoints && p.underPoints).map(p => ({
         playerName: p.playerName, line: parseFloat(p.line), overPoints: parseInt(p.overPoints), underPoints: parseInt(p.underPoints), result: null,
       }));
@@ -214,21 +228,30 @@ export default function MatchdayDetailPage() {
     finally { setGrading(null); }
   };
 
-  const handleSetHCPResult = async (game: Game, lineIndex: number, won: boolean) => {
+  const handleSetHCPResult = async (game: Game, lineIndex: number, homeWon: boolean) => {
     if (!confirm("Σίγουρα;")) return;
     setGrading(`${game.id}_hcp_${lineIndex}`);
     try {
-      const updatedLines = game.handicapLines.map((l, i) => i === lineIndex ? { ...l, result: won ? "win" : "loss" } : l);
+      const updatedLines = game.handicapLines.map((l, i) => i === lineIndex ? {
+        ...l,
+        homeResult: homeWon ? "win" : "loss",
+        awayResult: homeWon ? "loss" : "win",
+      } : l);
       await updateDoc(doc(db, "matchdays", matchdayId, "games", game.id), { handicapLines: updatedLines });
       const predictionsSnap = await getDocs(collection(db, "predictions"));
       const batch = writeBatch(db);
       const line = game.handicapLines[lineIndex];
       for (const predDoc of predictionsSnap.docs) {
         const predData = predDoc.data();
-        if (predData.matchdayId !== matchdayId || !predData.picks?.[`${game.id}_hcp_${lineIndex}`]) continue;
+        if (predData.matchdayId !== matchdayId) continue;
+        const pickKey = `${game.id}_hcp_${lineIndex}`;
+        if (!predData.picks?.[pickKey]) continue;
+        const pick = predData.picks[pickKey]; // "home" or "away"
+        const won = (pick === "home" && homeWon) || (pick === "away" && !homeWon);
+        const pts = pick === "home" ? line.homePoints : line.awayPoints;
         const userRef = doc(db, "users", predData.userId);
         const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) batch.update(userRef, { points: (userSnap.data().points || 0) + (won ? line.points : -1) });
+        if (userSnap.exists()) batch.update(userRef, { points: (userSnap.data().points || 0) + (won ? pts : -1) });
       }
       await batch.commit();
       fetchGames();
@@ -236,21 +259,26 @@ export default function MatchdayDetailPage() {
     finally { setGrading(null); }
   };
 
-  const handleSetOUResult = async (game: Game, lineIndex: number, won: boolean) => {
+  const handleSetOUResult = async (game: Game, lineIndex: number, overWon: boolean) => {
     if (!confirm("Σίγουρα;")) return;
     setGrading(`${game.id}_ou_${lineIndex}`);
     try {
-      const updatedLines = game.ouLines.map((l, i) => i === lineIndex ? { ...l, result: won ? "win" : "loss" } : l);
+      const updatedLines = game.ouLines.map((l, i) => i === lineIndex ? { ...l, result: overWon ? "over" : "under" } : l);
       await updateDoc(doc(db, "matchdays", matchdayId, "games", game.id), { ouLines: updatedLines });
       const predictionsSnap = await getDocs(collection(db, "predictions"));
       const batch = writeBatch(db);
       const line = game.ouLines[lineIndex];
       for (const predDoc of predictionsSnap.docs) {
         const predData = predDoc.data();
-        if (predData.matchdayId !== matchdayId || !predData.picks?.[`${game.id}_ou_${lineIndex}`]) continue;
+        if (predData.matchdayId !== matchdayId) continue;
+        const pickKey = `${game.id}_ou_${lineIndex}`;
+        if (!predData.picks?.[pickKey]) continue;
+        const pick = predData.picks[pickKey]; // "over" or "under"
+        const won = (pick === "over" && overWon) || (pick === "under" && !overWon);
+        const pts = pick === "over" ? line.overPoints : line.underPoints;
         const userRef = doc(db, "users", predData.userId);
         const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) batch.update(userRef, { points: (userSnap.data().points || 0) + (won ? line.points : -1) });
+        if (userSnap.exists()) batch.update(userRef, { points: (userSnap.data().points || 0) + (won ? pts : -1) });
       }
       await batch.commit();
       fetchGames();
@@ -375,6 +403,8 @@ export default function MatchdayDetailPage() {
                   <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Ημερομηνία</label>
                   <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} required />
                 </div>
+
+                {/* 1/2 */}
                 <div className="border-2 border-white/10 overflow-hidden">
                   <div className="bg-[#ff751f] px-3 py-1.5">
                     <span className="text-black text-[9px] font-black uppercase tracking-widest">1/2 — Νικητής</span>
@@ -390,28 +420,28 @@ export default function MatchdayDetailPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* HCP */}
                 <div className="border-2 border-white/10 overflow-hidden">
                   <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
                     <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">Handicap Lines</span>
-                    <button type="button" onClick={() => setHcpLines([...hcpLines, { team: "home", line: "", points: "" }])}
+                    <button type="button" onClick={() => setHcpLines([...hcpLines, { homeLine: "", awayLine: "", points: "" }])}
                       className="text-[9px] text-[#ff751f] border border-[#ff751f]/30 px-2 py-1 font-black uppercase hover:bg-[#ff751f]/10 transition-all">+ Γραμμή</button>
                   </div>
                   <div className="p-3 flex flex-col gap-2">
                     <div className="grid grid-cols-3 gap-2">
-                      <span className="text-[9px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Ομάδα</span>
-                      <span className="text-[9px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Line</span>
-                      <span className="text-[9px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Πόντοι</span>
+                      <span className="text-[9px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{homeTeam || "Γηπ."}</span>
+                      <span className="text-[9px] text-gray-600 font-black uppercase text-center" style={{ fontFamily: "Arial, sans-serif" }}>Πτς</span>
+                      <span className="text-[9px] text-gray-600 font-black uppercase text-right" style={{ fontFamily: "Arial, sans-serif" }}>{awayTeam || "Φιλ."}</span>
                     </div>
                     {hcpLines.map((l, i) => (
                       <div key={i} className="flex gap-2 items-center">
-                        <select value={l.team} onChange={(e) => { const u = [...hcpLines]; u[i].team = e.target.value; setHcpLines(u); }} className="flex-1 bg-[#111] border-2 border-white/10 px-2 py-2 text-xs text-white focus:outline-none focus:border-[#ff751f]">
-                          <option value="home">{homeTeam || "Γηπ."}</option>
-                          <option value="away">{awayTeam || "Φιλ."}</option>
-                        </select>
-                        <input type="number" step="0.5" value={l.line} onChange={(e) => { const u = [...hcpLines]; u[i].line = e.target.value; setHcpLines(u); }}
-                          className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="-18.5" />
+                        <input type="number" step="0.5" value={l.homeLine} onChange={(e) => { const u = [...hcpLines]; u[i].homeLine = e.target.value; setHcpLines(u); }}
+                          className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="-2.5" />
                         <input type="number" step="1" min="1" max="9" value={l.points} onChange={(e) => { const u = [...hcpLines]; u[i].points = e.target.value; setHcpLines(u); }}
-                          className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="9" />
+                          className="w-16 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f] text-center" placeholder="1" />
+                        <input type="number" step="0.5" value={l.awayLine} onChange={(e) => { const u = [...hcpLines]; u[i].awayLine = e.target.value; setHcpLines(u); }}
+                          className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="8.5" />
                         {hcpLines.length > 1 && (
                           <button type="button" onClick={() => setHcpLines(hcpLines.filter((_, j) => j !== i))}
                             className="text-red-400 text-xs px-2 py-2 border-2 border-white/10 hover:border-red-500 transition-all">✕</button>
@@ -420,23 +450,28 @@ export default function MatchdayDetailPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* OU */}
                 <div className="border-2 border-white/10 overflow-hidden">
                   <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
                     <span className="text-[9px] font-black uppercase tracking-widest text-green-400">Over/Under Lines</span>
-                    <button type="button" onClick={() => setOuLines([...ouLines, { type: "over", line: "", points: "" }])}
+                    <button type="button" onClick={() => setOuLines([...ouLines, { line: "", overPoints: "", underPoints: "" }])}
                       className="text-[9px] text-[#ff751f] border border-[#ff751f]/30 px-2 py-1 font-black uppercase hover:bg-[#ff751f]/10 transition-all">+ Γραμμή</button>
                   </div>
                   <div className="p-3 flex flex-col gap-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <span className="text-[9px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Over πτς</span>
+                      <span className="text-[9px] text-gray-600 font-black uppercase text-center" style={{ fontFamily: "Arial, sans-serif" }}>Σύνολο</span>
+                      <span className="text-[9px] text-gray-600 font-black uppercase text-right" style={{ fontFamily: "Arial, sans-serif" }}>Under πτς</span>
+                    </div>
                     {ouLines.map((l, i) => (
                       <div key={i} className="flex gap-2 items-center">
-                        <select value={l.type} onChange={(e) => { const u = [...ouLines]; u[i].type = e.target.value; setOuLines(u); }} className="flex-1 bg-[#111] border-2 border-white/10 px-2 py-2 text-xs text-white focus:outline-none focus:border-[#ff751f]">
-                          <option value="over">Over</option>
-                          <option value="under">Under</option>
-                        </select>
+                        <input type="number" step="1" min="1" max="9" value={l.overPoints} onChange={(e) => { const u = [...ouLines]; u[i].overPoints = e.target.value; setOuLines(u); }}
+                          className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="1" />
                         <input type="number" step="0.5" value={l.line} onChange={(e) => { const u = [...ouLines]; u[i].line = e.target.value; setOuLines(u); }}
-                          className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="160.5" />
-                        <input type="number" step="1" min="1" max="9" value={l.points} onChange={(e) => { const u = [...ouLines]; u[i].points = e.target.value; setOuLines(u); }}
-                          className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="5" />
+                          className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f] text-center" placeholder="155.5" />
+                        <input type="number" step="1" min="1" max="9" value={l.underPoints} onChange={(e) => { const u = [...ouLines]; u[i].underPoints = e.target.value; setOuLines(u); }}
+                          className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="9" />
                         {ouLines.length > 1 && (
                           <button type="button" onClick={() => setOuLines(ouLines.filter((_, j) => j !== i))}
                             className="text-red-400 text-xs px-2 py-2 border-2 border-white/10 hover:border-red-500 transition-all">✕</button>
@@ -445,6 +480,8 @@ export default function MatchdayDetailPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Player Props */}
                 <div className="border-2 border-white/10 overflow-hidden">
                   <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
                     <span className="text-[9px] font-black uppercase tracking-widest text-yellow-400">Player Props</span>
@@ -483,6 +520,7 @@ export default function MatchdayDetailPage() {
                     </div>
                   )}
                 </div>
+
                 <div className="flex gap-0">
                   <button type="submit" disabled={saving}
                     className="bg-[#ff751f] text-black font-black px-6 py-3 text-xs uppercase tracking-widest hover:bg-white disabled:opacity-50 transition-all border-2 border-[#ff751f]">
@@ -520,8 +558,6 @@ export default function MatchdayDetailPage() {
 
             return (
               <div key={g.id} className="border-2 border-white/10 bg-black overflow-hidden">
-
-                {/* Collapsed header — always visible */}
                 <button
                   onClick={() => setExpandedGameId(isExpanded ? null : g.id)}
                   className="w-full flex items-center justify-between px-4 py-3 bg-white/[0.03] hover:bg-white/[0.06] transition-all"
@@ -541,11 +577,10 @@ export default function MatchdayDetailPage() {
                     }`}>
                       {g.status === "pending" ? "Αναμονή" : g.status === "live" ? "LIVE" : "✓ Τελικό"}
                     </span>
-                    <button
-                      onClick={() => {
-                        if (isEditingFull) { setEditingFullGameId(null); }
-                        else { startEditGame(g); setExpandedGameId(g.id); }
-                      }}
+                    <button onClick={() => {
+                      if (isEditingFull) { setEditingFullGameId(null); }
+                      else { startEditGame(g); setExpandedGameId(g.id); }
+                    }}
                       className={`text-[10px] border-2 px-2.5 py-1 font-black transition-all ${
                         isEditingFull ? "border-[#ff751f] text-[#ff751f]" : "border-white/10 text-gray-600 hover:border-[#ff751f] hover:text-[#ff751f]"
                       }`}>✏️ Edit</button>
@@ -554,11 +589,8 @@ export default function MatchdayDetailPage() {
                   </div>
                 </button>
 
-                {/* Expanded content */}
                 {isExpanded && (
                   <div className="border-t border-white/10">
-
-                    {/* EDIT MODE */}
                     {isEditingFull ? (
                       <div className="p-4 flex flex-col gap-4">
                         <div className="flex items-center gap-0 mb-2">
@@ -566,8 +598,6 @@ export default function MatchdayDetailPage() {
                             <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Επεξεργασία Ματς</span>
                           </div>
                         </div>
-
-                        {/* Teams */}
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Γηπεδούχος</label>
@@ -582,14 +612,10 @@ export default function MatchdayDetailPage() {
                             </select>
                           </div>
                         </div>
-
-                        {/* Date */}
                         <div>
                           <label className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2 block" style={{ fontFamily: "Arial, sans-serif" }}>Ημερομηνία</label>
                           <input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} className={inputCls} />
                         </div>
-
-                        {/* 1/2 points */}
                         <div className="border-2 border-white/10 overflow-hidden">
                           <div className="bg-[#ff751f] px-3 py-1.5">
                             <span className="text-black text-[9px] font-black uppercase tracking-widest">1/2 — Πόντοι</span>
@@ -606,25 +632,28 @@ export default function MatchdayDetailPage() {
                           </div>
                         </div>
 
-                        {/* HCP */}
+                        {/* Edit HCP */}
                         <div className="border-2 border-white/10 overflow-hidden">
                           <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
                             <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">Handicap Lines</span>
-                            <button type="button" onClick={() => setEditHcpLines([...editHcpLines, { team: "home", line: "", points: "" }])}
+                            <button type="button" onClick={() => setEditHcpLines([...editHcpLines, { homeLine: "", awayLine: "", points: "" }])}
                               className="text-[9px] text-[#ff751f] border border-[#ff751f]/30 px-2 py-1 font-black uppercase hover:bg-[#ff751f]/10 transition-all">+ Γραμμή</button>
                           </div>
                           <div className="p-3 flex flex-col gap-2">
+                            <div className="grid grid-cols-3 gap-2">
+                              <span className="text-[9px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>{editHomeTeam || "Γηπ."}</span>
+                              <span className="text-[9px] text-gray-600 font-black uppercase text-center" style={{ fontFamily: "Arial, sans-serif" }}>Πτς</span>
+                              <span className="text-[9px] text-gray-600 font-black uppercase text-right" style={{ fontFamily: "Arial, sans-serif" }}>{editAwayTeam || "Φιλ."}</span>
+                            </div>
                             {editHcpLines.length === 0 && <div className="text-[10px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Καμία γραμμή.</div>}
                             {editHcpLines.map((l, i) => (
                               <div key={i} className="flex gap-2 items-center">
-                                <select value={l.team} onChange={(e) => { const u = [...editHcpLines]; u[i].team = e.target.value; setEditHcpLines(u); }} className="flex-1 bg-[#111] border-2 border-white/10 px-2 py-2 text-xs text-white focus:outline-none focus:border-[#ff751f]">
-                                  <option value="home">{editHomeTeam || "Γηπ."}</option>
-                                  <option value="away">{editAwayTeam || "Φιλ."}</option>
-                                </select>
-                                <input type="number" step="0.5" value={l.line} onChange={(e) => { const u = [...editHcpLines]; u[i].line = e.target.value; setEditHcpLines(u); }}
-                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="-18.5" />
+                                <input type="number" step="0.5" value={l.homeLine} onChange={(e) => { const u = [...editHcpLines]; u[i].homeLine = e.target.value; setEditHcpLines(u); }}
+                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="-2.5" />
                                 <input type="number" step="1" min="1" max="9" value={l.points} onChange={(e) => { const u = [...editHcpLines]; u[i].points = e.target.value; setEditHcpLines(u); }}
-                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="9" />
+                                  className="w-16 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f] text-center" placeholder="1" />
+                                <input type="number" step="0.5" value={l.awayLine} onChange={(e) => { const u = [...editHcpLines]; u[i].awayLine = e.target.value; setEditHcpLines(u); }}
+                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="8.5" />
                                 <button type="button" onClick={() => setEditHcpLines(editHcpLines.filter((_, j) => j !== i))}
                                   className="text-red-400 text-xs px-2 py-2 border-2 border-white/10 hover:border-red-500 transition-all">✕</button>
                               </div>
@@ -632,25 +661,28 @@ export default function MatchdayDetailPage() {
                           </div>
                         </div>
 
-                        {/* OU */}
+                        {/* Edit OU */}
                         <div className="border-2 border-white/10 overflow-hidden">
                           <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
                             <span className="text-[9px] font-black uppercase tracking-widest text-green-400">Over/Under Lines</span>
-                            <button type="button" onClick={() => setEditOuLines([...editOuLines, { type: "over", line: "", points: "" }])}
+                            <button type="button" onClick={() => setEditOuLines([...editOuLines, { line: "", overPoints: "", underPoints: "" }])}
                               className="text-[9px] text-[#ff751f] border border-[#ff751f]/30 px-2 py-1 font-black uppercase hover:bg-[#ff751f]/10 transition-all">+ Γραμμή</button>
                           </div>
                           <div className="p-3 flex flex-col gap-2">
+                            <div className="grid grid-cols-3 gap-2">
+                              <span className="text-[9px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Over πτς</span>
+                              <span className="text-[9px] text-gray-600 font-black uppercase text-center" style={{ fontFamily: "Arial, sans-serif" }}>Σύνολο</span>
+                              <span className="text-[9px] text-gray-600 font-black uppercase text-right" style={{ fontFamily: "Arial, sans-serif" }}>Under πτς</span>
+                            </div>
                             {editOuLines.length === 0 && <div className="text-[10px] text-gray-600 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>Καμία γραμμή.</div>}
                             {editOuLines.map((l, i) => (
                               <div key={i} className="flex gap-2 items-center">
-                                <select value={l.type} onChange={(e) => { const u = [...editOuLines]; u[i].type = e.target.value; setEditOuLines(u); }} className="flex-1 bg-[#111] border-2 border-white/10 px-2 py-2 text-xs text-white focus:outline-none focus:border-[#ff751f]">
-                                  <option value="over">Over</option>
-                                  <option value="under">Under</option>
-                                </select>
+                                <input type="number" step="1" min="1" max="9" value={l.overPoints} onChange={(e) => { const u = [...editOuLines]; u[i].overPoints = e.target.value; setEditOuLines(u); }}
+                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="1" />
                                 <input type="number" step="0.5" value={l.line} onChange={(e) => { const u = [...editOuLines]; u[i].line = e.target.value; setEditOuLines(u); }}
-                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="160.5" />
-                                <input type="number" step="1" min="1" max="9" value={l.points} onChange={(e) => { const u = [...editOuLines]; u[i].points = e.target.value; setEditOuLines(u); }}
-                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="5" />
+                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f] text-center" placeholder="155.5" />
+                                <input type="number" step="1" min="1" max="9" value={l.underPoints} onChange={(e) => { const u = [...editOuLines]; u[i].underPoints = e.target.value; setEditOuLines(u); }}
+                                  className="flex-1 bg-white/5 border-2 border-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:border-[#ff751f]" placeholder="9" />
                                 <button type="button" onClick={() => setEditOuLines(editOuLines.filter((_, j) => j !== i))}
                                   className="text-red-400 text-xs px-2 py-2 border-2 border-white/10 hover:border-red-500 transition-all">✕</button>
                               </div>
@@ -658,7 +690,7 @@ export default function MatchdayDetailPage() {
                           </div>
                         </div>
 
-                        {/* Player Props */}
+                        {/* Edit Player Props */}
                         <div className="border-2 border-white/10 overflow-hidden">
                           <div className="flex items-center justify-between bg-white/5 px-3 py-2 border-b border-white/10">
                             <span className="text-[9px] font-black uppercase tracking-widest text-yellow-400">Player Props</span>
@@ -698,7 +730,6 @@ export default function MatchdayDetailPage() {
                           )}
                         </div>
 
-                        {/* Save/Cancel */}
                         <div className="flex gap-0">
                           <button onClick={() => handleSaveEdit(g.id)} disabled={savingEdit}
                             className="bg-[#ff751f] text-black font-black px-6 py-3 text-xs uppercase tracking-widest hover:bg-white disabled:opacity-50 transition-all border-2 border-[#ff751f]">
@@ -711,7 +742,6 @@ export default function MatchdayDetailPage() {
                         </div>
                       </div>
                     ) : (
-                      /* VIEW MODE */
                       <div className="p-4 flex flex-col gap-4">
 
                         {/* 1/2 */}
@@ -735,21 +765,29 @@ export default function MatchdayDetailPage() {
                         {g.handicapLines?.length > 0 && (
                           <div>
                             <div className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-2">Handicap</div>
-                            <div className="flex flex-col gap-2">
+                            <div className="border border-white/10 overflow-hidden">
+                              <div className="grid grid-cols-3 gap-0 bg-white/5 px-3 py-2 border-b border-white/10">
+                                <span className="text-[9px] font-black uppercase text-white">{g.homeTeam}</span>
+                                <span className="text-[9px] font-black uppercase text-gray-500 text-center">Πτς</span>
+                                <span className="text-[9px] font-black uppercase text-white text-right">{g.awayTeam}</span>
+                              </div>
                               {g.handicapLines.map((l, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                  <span className="text-[10px] text-gray-400 w-40 flex-shrink-0 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>
-                                    {l.team === "home" ? g.homeTeam : g.awayTeam} {l.line > 0 ? "+" : ""}{l.line}
-                                    <span className="text-[#ff751f] ml-1">+{l.points}πτς</span>
-                                  </span>
-                                  <button onClick={() => handleSetHCPResult(g, i, true)} disabled={!!grading}
-                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                                      l.result === "win" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
-                                    }`}>✓ Κέρδισε</button>
-                                  <button onClick={() => handleSetHCPResult(g, i, false)} disabled={!!grading}
-                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                                      l.result === "loss" ? "bg-red-700 border-red-700 text-white" : "border-white/10 text-white hover:border-red-500"
-                                    }`}>✗ Έχασε</button>
+                                <div key={i} className="grid grid-cols-3 gap-0 px-3 py-2 border-b border-white/[0.06] last:border-0 items-center">
+                                  <span className="text-sm font-black text-blue-300">{l.homeLine > 0 ? "+" : ""}{l.homeLine}</span>
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span className="text-sm font-black text-[#ff751f]">{l.homePoints}</span>
+                                    <div className="flex gap-1">
+                                      <button onClick={() => handleSetHCPResult(g, i, true)} disabled={!!grading}
+                                        className={`px-2 py-0.5 text-[9px] font-black uppercase border transition-all disabled:opacity-50 ${
+                                          l.homeResult === "win" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
+                                        }`}>✓ Home</button>
+                                      <button onClick={() => handleSetHCPResult(g, i, false)} disabled={!!grading}
+                                        className={`px-2 py-0.5 text-[9px] font-black uppercase border transition-all disabled:opacity-50 ${
+                                          l.awayResult === "win" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
+                                        }`}>✓ Away</button>
+                                    </div>
+                                  </div>
+                                  <span className="text-sm font-black text-blue-300 text-right">{l.awayLine > 0 ? "+" : ""}{l.awayLine}</span>
                                 </div>
                               ))}
                             </div>
@@ -760,21 +798,29 @@ export default function MatchdayDetailPage() {
                         {g.ouLines?.length > 0 && (
                           <div>
                             <div className="text-[9px] font-black uppercase tracking-widest text-green-400 mb-2">Over / Under</div>
-                            <div className="flex flex-col gap-2">
+                            <div className="border border-white/10 overflow-hidden">
+                              <div className="grid grid-cols-3 gap-0 bg-white/5 px-3 py-2 border-b border-white/10">
+                                <span className="text-[9px] font-black uppercase text-green-400">Over πτς</span>
+                                <span className="text-[9px] font-black uppercase text-gray-500 text-center">Σύνολο</span>
+                                <span className="text-[9px] font-black uppercase text-red-400 text-right">Under πτς</span>
+                              </div>
                               {g.ouLines.map((l, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                  <span className="text-[10px] text-gray-400 w-40 flex-shrink-0 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>
-                                    {l.type === "over" ? "Over" : "Under"} {l.line}
-                                    <span className="text-[#ff751f] ml-1">+{l.points}πτς</span>
-                                  </span>
-                                  <button onClick={() => handleSetOUResult(g, i, true)} disabled={!!grading}
-                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                                      l.result === "win" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
-                                    }`}>✓ Κέρδισε</button>
-                                  <button onClick={() => handleSetOUResult(g, i, false)} disabled={!!grading}
-                                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all disabled:opacity-50 ${
-                                      l.result === "loss" ? "bg-red-700 border-red-700 text-white" : "border-white/10 text-white hover:border-red-500"
-                                    }`}>✗ Έχασε</button>
+                                <div key={i} className="grid grid-cols-3 gap-0 px-3 py-2 border-b border-white/[0.06] last:border-0 items-center">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm font-black text-green-300">{l.overPoints}</span>
+                                    <button onClick={() => handleSetOUResult(g, i, true)} disabled={!!grading}
+                                      className={`px-2 py-0.5 text-[9px] font-black uppercase border transition-all disabled:opacity-50 ${
+                                        l.result === "over" ? "bg-green-600 border-green-600 text-white" : "border-white/10 text-white hover:border-green-500"
+                                      }`}>✓</button>
+                                  </div>
+                                  <span className="text-sm font-black text-white text-center">{l.line}</span>
+                                  <div className="flex items-center justify-end gap-1">
+                                    <button onClick={() => handleSetOUResult(g, i, false)} disabled={!!grading}
+                                      className={`px-2 py-0.5 text-[9px] font-black uppercase border transition-all disabled:opacity-50 ${
+                                        l.result === "under" ? "bg-red-700 border-red-700 text-white" : "border-white/10 text-white hover:border-red-500"
+                                      }`}>✓</button>
+                                    <span className="text-sm font-black text-red-300">{l.underPoints}</span>
+                                  </div>
                                 </div>
                               ))}
                             </div>
