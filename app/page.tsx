@@ -307,6 +307,22 @@ export default function Home() {
     ? (matchday.deadline.toDate ? matchday.deadline.toDate() : new Date(matchday.deadline)) < new Date()
     : false;
 
+  // Ομαδοποίηση ματς ανά ημέρα και εύρεση πρώτου ματς κάθε μέρας
+const gameLockTimes: Record<string, Date> = {};
+games.forEach(g => {
+  const gameDate = g.date?.toDate ? g.date.toDate() : new Date(g.date);
+  const dayKey = gameDate.toLocaleDateString("el-GR");
+  if (!gameLockTimes[dayKey] || gameDate < gameLockTimes[dayKey]) {
+    gameLockTimes[dayKey] = gameDate;
+  }
+});
+
+const isGameLocked = (g: Game) => {
+  const gameDate = g.date?.toDate ? g.date.toDate() : new Date(g.date);
+  const dayKey = gameDate.toLocaleDateString("el-GR");
+  return gameLockTimes[dayKey] < new Date();
+};
+
   const totalPicks = games.length + games.filter(g => g.handicapLines?.length > 0).length + games.filter(g => g.ouLines?.length > 0).length;
   const pickedCount = Object.keys(predictions).length;
   const progressPct = totalPicks > 0 ? (pickedCount / totalPicks) * 100 : 0;
@@ -455,6 +471,7 @@ export default function Home() {
             ) : (
               <div className="flex flex-col gap-3">
                 {games.map((g, index) => {
+                  const gameLocked = isGameLocked(g);
                   const stats = gameStats[g.id];
                   const hasHCP = g.handicapLines?.length > 0;
 const hasOU = g.ouLines?.length > 0;
@@ -483,7 +500,7 @@ const isExpanded = expandedGame === g.id;
                             <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>
                               {formatGameDate(g.date)}
                             </span>
-                            {(g.status === "live" || deadlinePassed) && (
+                            {(g.status === "live" || gameLocked) && (
                               <div className="bg-red-600 px-2 py-0.5 flex items-center gap-1">
                                 <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
                                 <span className="text-[9px] text-white font-black uppercase">Live</span>
@@ -507,7 +524,7 @@ const isExpanded = expandedGame === g.id;
                         <div className="flex items-stretch gap-0 mb-4">
                           <motion.button whileTap={{ scale: 0.98 }}
                             onClick={() => handlePick(g.id, "home")}
-                            disabled={!!saving || deadlinePassed}
+                            disabled={!!saving || gameLocked}
                             className={`flex-1 flex items-center justify-between px-4 py-4 border-2 transition-all ${
                               predictions[g.id] === "home"
                                 ? "bg-[#ff751f] border-[#ff751f] text-black"
@@ -523,7 +540,7 @@ const isExpanded = expandedGame === g.id;
 
                           <motion.button whileTap={{ scale: 0.98 }}
                             onClick={() => handlePick(g.id, "away")}
-                            disabled={!!saving || deadlinePassed}
+                            disabled={!!saving || gameLocked}
                             className={`flex-1 flex items-center justify-between px-4 py-4 border-2 transition-all ${
                               predictions[g.id] === "away"
                                 ? "bg-[#ff751f] border-[#ff751f] text-black"
