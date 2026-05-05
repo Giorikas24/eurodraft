@@ -712,9 +712,10 @@ const isExpanded = expandedGame === g.id;
                 ) : (
                   <div className="flex flex-col gap-1">
                     {topUsers.map((u, i) => {
-                      const isMe = user?.uid === u.id;
-                      return (
-                        <div key={u.id} className={`flex items-center gap-3 p-2 transition-all ${isMe ? "bg-[#ff751f]" : "hover:bg-white/5"}`}>
+  const isMe = user?.uid === u.id;
+  return (
+    <div key={u.id} onClick={() => router.push(`/profile/${u.id}`)}
+      className={`flex items-center gap-3 p-2 transition-all cursor-pointer ${isMe ? "bg-[#ff751f] hover:bg-[#ff8534]" : "hover:bg-white/10"}`}>
                           <span className={`text-xs font-black w-6 text-center ${isMe ? "text-black" : "text-gray-600"}`}>
                             {i === 0 ? "01" : i === 1 ? "02" : i === 2 ? "03" : `0${i+1}`}
                           </span>
@@ -728,7 +729,7 @@ const isExpanded = expandedGame === g.id;
                     })}
                     {myRank > 5 && user && (
                       <div className="border-t border-white/10 mt-1 pt-1">
-                        <div className="flex items-center gap-3 p-2 bg-[#ff751f]">
+                        <div onClick={() => router.push(`/profile/${user.uid}`)} className="flex items-center gap-3 p-2 bg-[#ff751f] cursor-pointer hover:bg-[#ff8534] transition-all">
                           <span className="text-xs font-black w-6 text-center text-black">{myRank}</span>
                           <div className="w-7 h-7 bg-black flex items-center justify-center text-[10px] font-black text-[#ff751f]">
                             {user.displayName?.[0]?.toUpperCase() || "?"}
