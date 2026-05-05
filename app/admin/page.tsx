@@ -8,6 +8,9 @@ import { db } from "@/lib/firebase";
 import { motion } from "framer-motion";
 
 const ADMIN_EMAIL = "georgelipas05@gmail.com";
+// Πρόσθεσε state στην αρχή
+const [migrating, setMigrating] = useState(false);
+const [migrated, setMigrated] = useState(false);
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -17,6 +20,82 @@ export default function AdminPage() {
   const [challengeRequired, setChallengeRequired] = useState("");
   const [savingChallenge, setSavingChallenge] = useState(false);
   const [challengeSaved, setChallengeSaved] = useState(false);
+
+  // Πρόσθεσε function
+const handleMigrate = async () => {
+  if (!confirm("Σίγουρα; Αυτό θα μετατρέψει όλα τα HCP/OU δεδομένα.")) return;
+  setMigrating(true);
+  try {
+    const { collection, getDocs, doc, updateDoc } = await import("firebase/firestore");
+    const matchdaysSnap = await getDocs(collection(db, "matchdays"));
+    for (const matchdayDoc of matchdaysSnap.docs) {
+      const gamesSnap = await getDocs(collection(db, "matchdays", matchdayDoc.id, "games"));
+      for (const gameDoc of gamesSnap.docs) {
+        const game = gameDoc.data();
+        const oldHcp = game.handicapLines || [];
+        const oldOU = game.ouLines || [];
+        if (oldHcp.length === 0 && oldOU.length === 0) continue;
+        // Check if already migrated (new format has homeLine field)
+        if (oldHcp.length > 0 && oldHcp[0].homeLine !== undefined) continue;
+
+        // Migrate HCP
+        const hcpMap: Record<number, any> = {};
+        for (const l of oldHcp) {
+          const key = l.homePoints || l.points;
+          if (!hcpMap[key]) hcpMap[key] = {};
+          if (l.team === "home") {
+            hcpMap[key].homeLine = l.line;
+            hcpMap[key].homePoints = l.points;
+            hcpMap[key].homeResult = l.result;
+          } else {
+            hcpMap[key].awayLine = l.line;
+            hcpMap[key].awayPoints = l.points;
+            hcpMap[key].awayResult = l.result;
+          }
+        }
+        const newHcp = Object.values(hcpMap)
+          .sort((a: any, b: any) => a.homePoints - b.homePoints)
+          .map((h: any) => ({
+            homeLine: h.homeLine ?? null,
+            awayLine: h.awayLine ?? null,
+            homePoints: h.homePoints ?? 0,
+            awayPoints: h.awayPoints ?? 0,
+            homeResult: h.homeResult ?? null,
+            awayResult: h.awayResult ?? null,
+          }));
+
+        // Migrate OU
+        const ouMap: Record<number, any> = {};
+        for (const l of oldOU) {
+          if (!ouMap[l.line]) ouMap[l.line] = {};
+          if (l.type === "over") {
+            ouMap[l.line].overPoints = l.points;
+            ouMap[l.line].overResult = l.result;
+          } else {
+            ouMap[l.line].underPoints = l.points;
+            ouMap[l.line].underResult = l.result;
+          }
+        }
+        const newOU = Object.keys(ouMap)
+          .map(line => ({
+            line: Number(line),
+            overPoints: ouMap[Number(line)].overPoints ?? 0,
+            underPoints: ouMap[Number(line)].underPoints ?? 0,
+            result: ouMap[Number(line)].overResult === "win" ? "over" :
+                    ouMap[Number(line)].underResult === "win" ? "under" : null,
+          }))
+          .sort((a, b) => a.overPoints - b.overPoints);
+
+        await updateDoc(doc(db, "matchdays", matchdayDoc.id, "games", gameDoc.id), {
+          handicapLines: newHcp,
+          ouLines: newOU,
+        });
+      }
+    }
+    setMigrated(true);
+  } catch (err) { console.error(err); alert("Error: " + err); }
+  finally { setMigrating(false); }
+};
 
   useEffect(() => {
     if (!loading && (!user || user.email !== ADMIN_EMAIL)) router.push("/");
@@ -173,7 +252,19 @@ export default function AdminPage() {
           </motion.div>
         </div>
 
+        
+
         {/* Quick links */}
+                    <div className="border-t border-white/10 mt-4 pt-4">
+  <div className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-3">Migration</div>
+  <button onClick={handleMigrate} disabled={migrating || migrated}
+    className={`px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-2 disabled:opacity-50 ${
+      migrated ? "border-green-500 text-green-500" : "border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black"
+    }`}>
+    {migrated ? "✓ Migration ολοκληρώθηκε!" : migrating ? "Migrating..." : "⚡ Migrate HCP/OU Data"}
+  </button>
+</div>
+
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="border-2 border-white/10 bg-black overflow-hidden">
           <div className="bg-white px-4 py-2">
