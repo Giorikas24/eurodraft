@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import { getBadge } from "@/lib/badges";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 interface UserData {
   id: string;
@@ -17,6 +18,7 @@ interface UserData {
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -87,30 +89,22 @@ export default function LeaderboardPage() {
                   <motion.div key={u.id}
                     initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 * i }}
-                    className="flex flex-col items-center flex-1 max-w-[160px]"
+                    className="flex flex-col items-center flex-1 max-w-[160px] cursor-pointer group"
+                    onClick={() => router.push(`/profile/${u.id}`)}
                   >
-                    {/* Avatar */}
-                    <div className={`w-12 h-12 md:w-16 md:h-16 flex items-center justify-center text-lg md:text-2xl font-black mb-2 border-2 ${
+                    <div className={`w-12 h-12 md:w-16 md:h-16 flex items-center justify-center text-lg md:text-2xl font-black mb-2 border-2 group-hover:opacity-80 transition-all ${
                       isFirst ? "bg-[#ff751f] text-black border-[#ff751f]" : "bg-white text-black border-white"
                     }`}>
                       {u.username?.[0]?.toUpperCase() || "?"}
                     </div>
-
-                    {/* Name */}
-                    <div className="text-xs font-black text-white text-center uppercase truncate w-full px-1 mb-0.5">
+                    <div className="text-xs font-black text-white text-center uppercase truncate w-full px-1 mb-0.5 group-hover:text-[#ff751f] transition-colors">
                       {u.username || u.email}
                       {isMe && <span className="text-[#ff751f] ml-1">★</span>}
                     </div>
-
-                    {/* Points */}
                     <div className={`text-sm font-black mb-1 ${isFirst ? "text-[#ff751f]" : "text-white"}`}>
                       {u.points} πτς
                     </div>
-
-                    {/* Badge */}
                     <span className={`text-[8px] px-2 py-0.5 font-black mb-2 ${badge.class}`}>{badge.label}</span>
-
-                    {/* Podium block */}
                     <div className={`w-full flex items-center justify-center border-2 ${
                       isFirst
                         ? "bg-[#ff751f] border-[#ff751f] h-24 md:h-32"
@@ -118,9 +112,7 @@ export default function LeaderboardPage() {
                         ? "bg-white/10 border-white/30 h-16 md:h-20"
                         : "bg-white/5 border-white/20 h-12 md:h-16"
                     }`}>
-                      <span className={`text-3xl md:text-4xl font-black ${isFirst ? "text-black" : "text-white"}`}>
-                        {rank}
-                      </span>
+                      <span className={`text-3xl md:text-4xl font-black ${isFirst ? "text-black" : "text-white"}`}>{rank}</span>
                     </div>
                   </motion.div>
                 );
@@ -141,7 +133,6 @@ export default function LeaderboardPage() {
           </div>
 
           <div className="border-2 border-white/10 overflow-hidden">
-            {/* Table header */}
             <div className="grid grid-cols-[40px_1fr_80px_70px] gap-2 px-4 py-3 bg-black border-b border-white/10">
               <div className="text-[9px] font-black uppercase tracking-widest text-gray-600">#</div>
               <div className="text-[9px] font-black uppercase tracking-widest text-gray-600">Παίκτης</div>
@@ -169,8 +160,9 @@ export default function LeaderboardPage() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.03 }}
-                    className={`grid grid-cols-[40px_1fr_80px_70px] gap-2 px-4 py-3.5 border-b border-white/[0.06] last:border-0 transition-all ${
-                      isMe ? "bg-[#ff751f]" : "hover:bg-white/[0.03]"
+                    onClick={() => router.push(`/profile/${u.id}`)}
+                    className={`grid grid-cols-[40px_1fr_80px_70px] gap-2 px-4 py-3.5 border-b border-white/[0.06] last:border-0 transition-all cursor-pointer ${
+                      isMe ? "bg-[#ff751f] hover:bg-[#ff8534]" : "hover:bg-white/[0.05]"
                     }`}
                   >
                     <div className={`text-sm font-black self-center ${
