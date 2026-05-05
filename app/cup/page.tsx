@@ -91,6 +91,15 @@ export default function CupPage() {
 
       <div className="w-full max-w-4xl mx-auto px-5 md:px-10 py-8">
 
+        {/* Coming soon banner */}
+<div className="border-2 border-[#ff751f] bg-[#ff751f]/10 mb-6 p-5 text-center">
+  <div className="text-2xl md:text-3xl font-black uppercase text-[#ff751f] mb-1">🏆 ΚΥΠΕΛΛΟ</div>
+  <div className="text-sm font-black uppercase tracking-widest text-white">Διαθέσιμο για τη σεζόν 2026/27</div>
+  <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-2 font-black" style={{ fontFamily: "Arial, sans-serif" }}>
+    Οι κατηγορίες παικτών ενεργοποιούνται μετά τις πρώτες 8 αγωνιστικές
+  </div>
+</div>
+
         {/* How it works */}
         <div className="border-2 border-white/10 bg-black mb-6 overflow-hidden">
           <div className="bg-white px-4 py-2">
