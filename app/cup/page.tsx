@@ -92,17 +92,17 @@ export default function CupPage() {
       <div className="w-full max-w-4xl mx-auto px-5 md:px-10 py-8">
 
         {/* Coming soon banner */}
-<div className="border-2 border-[#ff751f] bg-[#ff751f]/10 mb-6 p-5 text-center">
-  <div className="text-2xl md:text-3xl font-black uppercase text-[#ff751f] mb-1">🏆 ΚΥΠΕΛΛΟ</div>
-  <div className="text-sm font-black uppercase tracking-widest text-white">Διαθέσιμο για τη σεζόν 2026/27</div>
-  <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-2 font-black" style={{ fontFamily: "Arial, sans-serif" }}>
-    Οι κατηγορίες παικτών ενεργοποιούνται μετά τις πρώτες 8 αγωνιστικές
-  </div>
-</div>
+        <div className="border-2 border-[#ff751f] bg-[#ff751f]/10 p-8 text-center">
+          <div className="text-4xl mb-4">🏆</div>
+          <div className="text-2xl md:text-3xl font-black uppercase text-[#ff751f] mb-2">ΚΥΠΕΛΛΟ</div>
+          <div className="text-sm font-black uppercase tracking-widest text-white mb-3">Διαθέσιμο για τη σεζόν 2026/27</div>
+          <div className="text-[10px] text-gray-500 uppercase tracking-widest font-black" style={{ fontFamily: "Arial, sans-serif" }}>
+            Οι κατηγορίες παικτών ενεργοποιούνται μετά τις πρώτες 8 αγωνιστικές
+          </div>
+        </div>
 
-        
-        {/* How it works */}
-        {/*<div className="border-2 border-white/10 bg-black mb-6 overflow-hidden">
+        {/* How it works — HIDDEN FOR NOW */}
+        {/* <div className="border-2 border-white/10 bg-black mb-6 overflow-hidden">
           <div className="bg-white px-4 py-2">
             <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Πώς λειτουργεί</span>
           </div>
@@ -118,10 +118,10 @@ export default function CupPage() {
               </div>
             ))}
           </div>
-        </div>*/}
-        
+        </div> */}
 
-        {/*{loading ? (
+        {/* Categories — HIDDEN FOR NOW */}
+        {/* {loading ? (
           <div className="flex flex-col gap-3">
             {[1,2,3,4].map(i => (
               <div key={i} className="h-20 bg-white/[0.02] border-2 border-white/10 animate-pulse"></div>
@@ -139,8 +139,7 @@ export default function CupPage() {
                   transition={{ delay: ci * 0.08 }}
                   className={`border-2 overflow-hidden ${isMyCategory ? "border-opacity-60" : "border-white/10"}`}
                   style={{ borderColor: isMyCategory ? cat.color + "60" : undefined }}
-                >*/}
-                  {/* Category header */}
+                >
                   <div className="flex items-center justify-between px-4 py-3 border-b border-white/10"
                     style={{ backgroundColor: cat.bg }}>
                     <div className="flex items-center gap-3">
@@ -155,8 +154,6 @@ export default function CupPage() {
                       {cat.players.length} παίκτες
                     </span>
                   </div>
-
-                  {/* Players */}
                   <div className="bg-black">
                     {cat.players.length === 0 ? (
                       <div className="px-4 py-4 text-gray-600 text-[10px] uppercase font-black tracking-widest" style={{ fontFamily: "Arial, sans-serif" }}>
@@ -193,7 +190,8 @@ export default function CupPage() {
               );
             })}
           </motion.div>
-        )}
+        )} */}
+
       </div>
     </main>
   );
