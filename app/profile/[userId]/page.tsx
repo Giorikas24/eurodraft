@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc, collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, where, orderBy, updateDoc } from "firebase/firestore";
+import { updateProfile } from "firebase/auth";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
@@ -36,8 +37,6 @@ interface GameResult {
   ouLines: any[];
   playerProps: any[];
   pick: string | null;
-  hcpPick: string | null;
-  ouPick: string | null;
   propPicks: Record<string, string>;
 }
 
@@ -55,6 +54,13 @@ export default function PublicProfilePage() {
   const [history, setHistory] = useState<MatchdayHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [expandedMatchday, setExpandedMatchday] = useState<string | null>(null);
+
+  // Username editing
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameSuccess, setUsernameSuccess] = useState(false);
 
   const isOwnProfile = user?.uid === profileUserId;
 
@@ -79,7 +85,6 @@ export default function PublicProfilePage() {
     if (history.length > 0) return;
     setHistoryLoading(true);
     try {
-      // Fetch predictions for this user
       const predictionsSnap = await getDocs(query(collection(db, "predictions"), where("userId", "==", profileUserId)));
       const matchdaysSnap = await getDocs(collection(db, "matchdays"));
       const matchdaysMap: Record<string, { number: number; name?: string }> = {};
@@ -94,20 +99,20 @@ export default function PublicProfilePage() {
         const matchdayId = pred.matchdayId;
         const picks = pred.picks || {};
 
-        // Only show finished matchdays (deadline passed)
         const matchdayDoc = await getDoc(doc(db, "matchdays", matchdayId));
         if (!matchdayDoc.exists()) continue;
         const matchdayData = matchdayDoc.data();
         const deadline = matchdayData.deadline?.toDate ? matchdayData.deadline.toDate() : new Date(matchdayData.deadline);
-        if (deadline > new Date()) continue; // skip open matchdays
+        if (deadline > new Date()) continue;
 
         const gamesSnap = await getDocs(collection(db, "matchdays", matchdayId, "games"));
         const games: GameResult[] = gamesSnap.docs.map(g => {
           const game = g.data();
-          // Find prop picks
           const propPicks: Record<string, string> = {};
           Object.keys(picks).forEach(k => {
-            if (k.startsWith(`${g.id}_prop_`)) propPicks[k] = picks[k];
+            if (k.startsWith(`${g.id}_hcp_`) || k.startsWith(`${g.id}_ou_`) || k.startsWith(`${g.id}_prop_`)) {
+              propPicks[k] = picks[k];
+            }
           });
           return {
             id: g.id,
@@ -121,8 +126,6 @@ export default function PublicProfilePage() {
             ouLines: game.ouLines || [],
             playerProps: game.playerProps || [],
             pick: picks[g.id] || null,
-            hcpPick: Object.keys(picks).find(k => k.startsWith(`${g.id}_hcp_`)) ? picks[Object.keys(picks).find(k => k.startsWith(`${g.id}_hcp_`))!] : null,
-            ouPick: Object.keys(picks).find(k => k.startsWith(`${g.id}_ou_`)) ? picks[Object.keys(picks).find(k => k.startsWith(`${g.id}_ou_`))!] : null,
             propPicks,
           };
         });
@@ -146,29 +149,32 @@ export default function PublicProfilePage() {
     if (tab === "history") fetchHistory();
   }, [tab]);
 
+  const handleSaveUsername = async () => {
+    if (!user || !newUsername.trim()) return;
+    if (newUsername.trim().length < 3) { setUsernameError("Τουλάχιστον 3 χαρακτήρες."); return; }
+    if (newUsername.trim().length > 20) { setUsernameError("Μέχρι 20 χαρακτήρες."); return; }
+    setSavingUsername(true); setUsernameError("");
+    try {
+      const q = query(collection(db, "users"), where("username", "==", newUsername.trim()));
+      const snap = await getDocs(q);
+      if (!snap.empty && snap.docs[0].id !== user.uid) {
+        setUsernameError("Αυτό το username χρησιμοποιείται ήδη."); return;
+      }
+      await updateDoc(doc(db, "users", user.uid), { username: newUsername.trim() });
+      await updateProfile(user, { displayName: newUsername.trim() });
+      setStats(prev => prev ? { ...prev, username: newUsername.trim() } : prev);
+      setUsernameSuccess(true);
+      setEditingUsername(false);
+      setTimeout(() => setUsernameSuccess(false), 3000);
+    } catch (err) { setUsernameError("Κάτι πήγε στραβά."); }
+    finally { setSavingUsername(false); }
+  };
+
   const badge = rank > 0 && totalUsers > 0 ? getBadge(rank, totalUsers) : null;
 
   const getPickResult = (game: GameResult) => {
     if (!game.pick || !game.result) return "pending";
     return game.pick === game.result ? "win" : "loss";
-  };
-
-  const getHCPResult = (game: GameResult) => {
-    const pickKey = Object.keys(game.propPicks).find(k => k.startsWith(`${game.id}_hcp_`));
-    if (!pickKey) return null;
-    const lineIndex = parseInt(pickKey.split("_hcp_")[1]);
-    const line = game.handicapLines[lineIndex];
-    if (!line?.result) return "pending";
-    return line.result === "win" ? "win" : "loss";
-  };
-
-  const getOUResult = (game: GameResult) => {
-    const pickKey = Object.keys(game.propPicks).find(k => k.startsWith(`${game.id}_ou_`));
-    if (!pickKey) return null;
-    const lineIndex = parseInt(pickKey.split("_ou_")[1]);
-    const line = game.ouLines[lineIndex];
-    if (!line?.result) return "pending";
-    return line.result === "win" ? "win" : "loss";
   };
 
   if (loading) return (
@@ -235,6 +241,52 @@ export default function PublicProfilePage() {
           </div>
         </motion.div>
 
+        {/* Username change — only for own profile */}
+        {isOwnProfile && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+            className="border-2 border-white/10 bg-black mb-4 overflow-hidden">
+            <div className="bg-white px-4 py-2 flex items-center justify-between">
+              <span className="text-black text-[9px] font-black tracking-[4px] uppercase">Αλλαγή Username</span>
+              {usernameSuccess && <span className="text-green-600 text-[9px] font-black uppercase tracking-widest">✓ Αποθηκεύτηκε!</span>}
+            </div>
+            <div className="p-4">
+              {editingUsername ? (
+                <div className="flex flex-col gap-2">
+                  <input type="text" value={newUsername}
+                    onChange={(e) => { setNewUsername(e.target.value); setUsernameError(""); }}
+                    className="w-full bg-white/5 border-2 border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff751f] transition-all font-black uppercase tracking-wide"
+                    placeholder="Νέο username..." maxLength={20} autoFocus />
+                  {usernameError && (
+                    <div className="text-[10px] text-red-400 border-l-4 border-red-500 pl-3 py-1 font-black uppercase" style={{ fontFamily: "Arial, sans-serif" }}>
+                      {usernameError}
+                    </div>
+                  )}
+                  <div className="flex gap-0">
+                    <button onClick={handleSaveUsername} disabled={savingUsername}
+                      className="flex-1 bg-[#ff751f] text-black font-black py-2.5 text-xs uppercase tracking-widest hover:bg-white disabled:opacity-50 transition-all border-2 border-[#ff751f]">
+                      {savingUsername ? "..." : "Αποθήκευσε"}
+                    </button>
+                    <button onClick={() => { setEditingUsername(false); setUsernameError(""); }}
+                      className="border-2 border-white/10 text-gray-500 px-5 py-2.5 text-xs font-black uppercase tracking-widest hover:border-white/30 transition-all">
+                      Ακύρωση
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-600 font-black uppercase tracking-wide" style={{ fontFamily: "Arial, sans-serif" }}>
+                    Τρέχον: <span className="text-white">{stats?.username}</span>
+                  </span>
+                  <button onClick={() => { setEditingUsername(true); setNewUsername(stats?.username || ""); }}
+                    className="text-[10px] font-black uppercase tracking-widest text-[#ff751f] border-2 border-[#ff751f]/30 px-3 py-2 hover:bg-[#ff751f] hover:text-black transition-all">
+                    ✏️ Αλλαγή
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
         {/* Stats */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="grid grid-cols-2 gap-0 mb-6 border-2 border-white/10 overflow-hidden">
@@ -293,7 +345,6 @@ export default function PublicProfilePage() {
                   const isExpanded = expandedMatchday === md.matchdayId;
                   return (
                     <div key={md.matchdayId} className="border-2 border-white/10 bg-black overflow-hidden">
-                      {/* Matchday header */}
                       <button
                         onClick={() => setExpandedMatchday(isExpanded ? null : md.matchdayId)}
                         className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-all"
@@ -314,14 +365,19 @@ export default function PublicProfilePage() {
                         </div>
                       </button>
 
-                      {/* Games */}
                       {isExpanded && (
                         <div className="border-t border-white/10">
-                          {md.games.map((g, i) => {
+                          {md.games.map((g) => {
                             const result12 = getPickResult(g);
+                            // HCP picks
+                            const hcpPickKeys = Object.keys(g.propPicks).filter(k => k.startsWith(`${g.id}_hcp_`));
+                            // OU picks
+                            const ouPickKeys = Object.keys(g.propPicks).filter(k => k.startsWith(`${g.id}_ou_`));
+                            // Prop picks
+                            const propPickKeys = Object.keys(g.propPicks).filter(k => k.startsWith(`${g.id}_prop_`));
+
                             return (
                               <div key={g.id} className="border-b border-white/[0.06] last:border-0 p-4">
-                                {/* Game title */}
                                 <div className="flex items-center justify-between mb-3">
                                   <span className="text-xs font-black uppercase text-white">
                                     {g.homeTeam} <span className="text-[#ff751f]">vs</span> {g.awayTeam}
@@ -333,7 +389,7 @@ export default function PublicProfilePage() {
                                   )}
                                 </div>
 
-                                {/* 1/2 pick */}
+                                {/* 1/2 */}
                                 {g.pick && (
                                   <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
@@ -347,71 +403,79 @@ export default function PublicProfilePage() {
                                       result12 === "loss" ? "text-red-400 border-red-400/30 bg-red-400/10" :
                                       "text-gray-600 border-white/10"
                                     }`}>
-                                      {result12 === "win" ? "✓ +" + (g.pick === "home" ? g.homePoints : g.awayPoints) + "πτς" :
+                                      {result12 === "win" ? `✓ +${g.pick === "home" ? g.homePoints : g.awayPoints}πτς` :
                                        result12 === "loss" ? "✗ -1πτς" : "⏳"}
                                     </span>
                                   </div>
                                 )}
 
-                                {/* HCP pick */}
-                                {Object.keys(g.propPicks).filter(k => k.startsWith(`${g.id}_hcp_`)).map(pickKey => {
+                                {/* HCP */}
+                                {hcpPickKeys.map(pickKey => {
                                   const lineIndex = parseInt(pickKey.split("_hcp_")[1]);
                                   const line = g.handicapLines[lineIndex];
                                   if (!line) return null;
-                                  const teamName = line.team === "home" ? g.homeTeam : g.awayTeam;
+                                  const side = g.propPicks[pickKey]; // "home" or "away"
+                                  const linVal = side === "home" ? line.homeLine : line.awayLine;
+                                  const teamName = side === "home" ? g.homeTeam : g.awayTeam;
+                                  const lineResult = side === "home" ? line.homeResult : line.awayResult;
+                                  const pts = side === "home" ? line.homePoints : line.awayPoints;
                                   return (
                                     <div key={pickKey} className="flex items-center justify-between mb-2">
                                       <div className="flex items-center gap-2">
                                         <span className="text-[9px] text-blue-400 font-black uppercase tracking-widest">HCP</span>
                                         <span className="text-xs font-black uppercase text-white">
-                                          {teamName} {line.line > 0 ? "+" : ""}{line.line}
+                                          {teamName} {linVal > 0 ? "+" : ""}{linVal}
                                         </span>
                                       </div>
                                       <span className={`text-[10px] font-black uppercase px-2 py-0.5 border ${
-                                        line.result === "win" ? "text-green-400 border-green-400/30 bg-green-400/10" :
-                                        line.result === "loss" ? "text-red-400 border-red-400/30 bg-red-400/10" :
+                                        lineResult === "win" ? "text-green-400 border-green-400/30 bg-green-400/10" :
+                                        lineResult === "loss" ? "text-red-400 border-red-400/30 bg-red-400/10" :
                                         "text-gray-600 border-white/10"
                                       }`}>
-                                        {line.result === "win" ? "✓ +" + line.points + "πτς" :
-                                         line.result === "loss" ? "✗ -1πτς" : "⏳"}
+                                        {lineResult === "win" ? `✓ +${pts}πτς` :
+                                         lineResult === "loss" ? "✗ -1πτς" : "⏳"}
                                       </span>
                                     </div>
                                   );
                                 })}
 
-                                {/* OU pick */}
-                                {Object.keys(g.propPicks).filter(k => k.startsWith(`${g.id}_ou_`)).map(pickKey => {
+                                {/* OU */}
+                                {ouPickKeys.map(pickKey => {
                                   const lineIndex = parseInt(pickKey.split("_ou_")[1]);
                                   const line = g.ouLines[lineIndex];
                                   if (!line) return null;
+                                  const side = g.propPicks[pickKey]; // "over" or "under"
+                                  const pts = side === "over" ? line.overPoints : line.underPoints;
+                                  const won = line.result === side;
+                                  const pending = !line.result;
                                   return (
                                     <div key={pickKey} className="flex items-center justify-between mb-2">
                                       <div className="flex items-center gap-2">
                                         <span className="text-[9px] text-green-400 font-black uppercase tracking-widest">O/U</span>
                                         <span className="text-xs font-black uppercase text-white">
-                                          {line.type === "over" ? "Over" : "Under"} {line.line}
+                                          {side === "over" ? "Over" : "Under"} {line.line}
                                         </span>
                                       </div>
                                       <span className={`text-[10px] font-black uppercase px-2 py-0.5 border ${
-                                        line.result === "win" ? "text-green-400 border-green-400/30 bg-green-400/10" :
-                                        line.result === "loss" ? "text-red-400 border-red-400/30 bg-red-400/10" :
-                                        "text-gray-600 border-white/10"
+                                        pending ? "text-gray-600 border-white/10" :
+                                        won ? "text-green-400 border-green-400/30 bg-green-400/10" :
+                                        "text-red-400 border-red-400/30 bg-red-400/10"
                                       }`}>
-                                        {line.result === "win" ? "✓ +" + line.points + "πτς" :
-                                         line.result === "loss" ? "✗ -1πτς" : "⏳"}
+                                        {pending ? "⏳" : won ? `✓ +${pts}πτς` : "✗ -1πτς"}
                                       </span>
                                     </div>
                                   );
                                 })}
 
-                                {/* Player Props */}
-                                {Object.keys(g.propPicks).filter(k => k.startsWith(`${g.id}_prop_`)).map(pickKey => {
+                                {/* Props */}
+                                {propPickKeys.map(pickKey => {
                                   const propIndex = parseInt(pickKey.split("_prop_")[1]);
                                   const prop = g.playerProps[propIndex];
                                   if (!prop) return null;
                                   const pick = g.propPicks[pickKey];
                                   const isCorrect = prop.result && pick === prop.result;
                                   const isWrong = prop.result && pick !== prop.result;
+                                  const pts = pick === "over" ? prop.overPoints : prop.underPoints;
                                   return (
                                     <div key={pickKey} className="flex items-center justify-between mb-2">
                                       <div className="flex items-center gap-2">
@@ -425,8 +489,7 @@ export default function PublicProfilePage() {
                                         isWrong ? "text-red-400 border-red-400/30 bg-red-400/10" :
                                         "text-gray-600 border-white/10"
                                       }`}>
-                                        {isCorrect ? "✓ +" + (pick === "over" ? prop.overPoints : prop.underPoints) + "πτς" :
-                                         isWrong ? "✗ -1πτς" : "⏳"}
+                                        {isCorrect ? `✓ +${pts}πτς` : isWrong ? "✗ -1πτς" : "⏳"}
                                       </span>
                                     </div>
                                   );
