@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { collection, addDoc, query, orderBy, limit, onSnapshot, getDocs, where, doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Message {
@@ -32,11 +32,11 @@ const getUserColor = (userId: string) => {
 };
 const getDMId = (uid1: string, uid2: string) => [uid1, uid2].sort().join("_");
 
-export default function ChatPage() {
+function ChatContent() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Global chat
   const [tab, setTab] = useState<"global" | "dm">("global");
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
@@ -44,7 +44,6 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // DM
   const [conversations, setConversations] = useState<DMConversation[]>([]);
   const [activeDM, setActiveDM] = useState<DMConversation | null>(null);
   const [dmMessages, setDMMessages] = useState<Message[]>([]);
@@ -52,9 +51,19 @@ export default function ChatPage() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-
-  // Mobile: null = list, DMConversation = open chat
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
+
+  // Handle ?dm=... from profile page
+  useEffect(() => {
+    const dmId = searchParams.get("dm");
+    const username = searchParams.get("username");
+    if (dmId && username && user) {
+      const otherUserId = dmId.split("_").find(id => id !== user.uid) || "";
+      setActiveDM({ id: dmId, otherUserId, otherUsername: username });
+      setTab("dm");
+      setMobileView("chat");
+    }
+  }, [searchParams, user]);
 
   useEffect(() => {
     if (tab !== "global") return;
@@ -211,9 +220,7 @@ export default function ChatPage() {
                   </div>
                 )}
                 <div className={`px-4 py-2.5 text-sm break-words leading-relaxed ${
-                  isMe
-                    ? "bg-[#ff751f] text-black font-black"
-                    : "bg-white/10 text-white"
+                  isMe ? "bg-[#ff751f] text-black font-black" : "bg-white/10 text-white"
                 }`} style={{ fontFamily: "Arial, sans-serif", borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px" }}>
                   {msg.text}
                 </div>
@@ -249,8 +256,7 @@ export default function ChatPage() {
 
       {/* GLOBAL CHAT */}
       {tab === "global" && (
-        <div className="flex flex-col flex-1 overflow-hidden max-w-2xl w-full mx-auto px-0 md:px-0">
-          {/* Messages */}
+        <div className="flex flex-col flex-1 overflow-hidden max-w-2xl w-full mx-auto">
           <div className="flex-1 overflow-y-auto p-4 scrollbar-none">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-3">
@@ -261,8 +267,6 @@ export default function ChatPage() {
             {renderMessages(messages)}
             <div ref={bottomRef} />
           </div>
-
-          {/* Input */}
           {user ? (
             <form onSubmit={handleSendGlobal} className="flex gap-0 border-t-2 border-white/10 bg-black flex-shrink-0">
               <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value)}
@@ -282,16 +286,14 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* DM — Instagram style */}
+      {/* DM */}
       {tab === "dm" && (
         <div className="flex flex-1 overflow-hidden">
 
           {/* LEFT: Conversations list */}
-          <div className={`
-            flex-shrink-0 border-r border-white/10 flex flex-col bg-black
-            ${activeDM ? "hidden md:flex md:w-72" : "w-full md:w-72"}
-          `}>
-            {/* Header */}
+          <div className={`flex-shrink-0 border-r border-white/10 flex flex-col bg-black ${
+            activeDM ? "hidden md:flex md:w-72" : "w-full md:w-72"
+          }`}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 flex-shrink-0">
               <span className="text-sm font-black uppercase tracking-widest text-white">
                 {user?.displayName || "Messages"}
@@ -304,7 +306,6 @@ export default function ChatPage() {
               </button>
             </div>
 
-            {/* Search */}
             <AnimatePresence>
               {showSearch && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
@@ -325,7 +326,6 @@ export default function ChatPage() {
               )}
             </AnimatePresence>
 
-            {/* Conversations */}
             <div className="flex-1 overflow-y-auto scrollbar-none">
               {!user ? (
                 <div className="flex flex-col items-center justify-center h-full gap-3 p-6">
@@ -349,12 +349,10 @@ export default function ChatPage() {
                     className={`w-full flex items-center gap-3 px-4 py-3.5 border-b border-white/[0.04] transition-all text-left ${
                       isActive ? "bg-white/10" : "hover:bg-white/5"
                     }`}>
-                    {/* Avatar */}
                     <div className="w-12 h-12 flex items-center justify-center text-black font-black text-lg flex-shrink-0"
                       style={{ backgroundColor: color, borderRadius: "50%" }}>
                       {conv.otherUsername?.[0]?.toUpperCase() || "?"}
                     </div>
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
                         <span className="text-sm font-black uppercase text-white truncate">{conv.otherUsername}</span>
@@ -375,10 +373,7 @@ export default function ChatPage() {
           </div>
 
           {/* RIGHT: Active DM */}
-          <div className={`
-            flex-1 flex flex-col overflow-hidden
-            ${!activeDM ? "hidden md:flex" : "flex"}
-          `}>
+          <div className={`flex-1 flex flex-col overflow-hidden ${!activeDM ? "hidden md:flex" : "flex"}`}>
             {!activeDM ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-4">
                 <div className="w-20 h-20 border-2 border-white/10 flex items-center justify-center text-4xl">💬</div>
@@ -393,11 +388,8 @@ export default function ChatPage() {
               </div>
             ) : (
               <>
-                {/* DM Header */}
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-black flex-shrink-0">
-                  {/* Back button (mobile) */}
-                  <button
-                    onClick={() => { setActiveDM(null); setMobileView("list"); }}
+                  <button onClick={() => { setActiveDM(null); setMobileView("list"); }}
                     className="md:hidden text-[#ff751f] font-black text-lg mr-1">←</button>
                   <div className="w-10 h-10 flex items-center justify-center text-black font-black text-base flex-shrink-0"
                     style={{ backgroundColor: getUserColor(activeDM.otherUserId), borderRadius: "50%" }}>
@@ -411,7 +403,6 @@ export default function ChatPage() {
                   </div>
                 </div>
 
-                {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 scrollbar-none">
                   {dmMessages.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full gap-3">
@@ -429,12 +420,11 @@ export default function ChatPage() {
                   <div ref={bottomRef} />
                 </div>
 
-                {/* Input */}
                 <form onSubmit={handleSendDM} className="flex items-center gap-3 px-4 py-3 border-t border-white/10 bg-black flex-shrink-0">
                   <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value)}
                     className="flex-1 bg-white/10 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:bg-white/15 transition-all"
                     style={{ fontFamily: "Arial, sans-serif", borderRadius: 24 }}
-                    placeholder={`Μήνυμα...`} maxLength={500} />
+                    placeholder="Μήνυμα..." maxLength={500} />
                   <button type="submit" disabled={sending || !text.trim()}
                     className="w-10 h-10 bg-[#ff751f] text-black font-black flex items-center justify-center disabled:opacity-50 transition-all flex-shrink-0"
                     style={{ borderRadius: "50%" }}>
@@ -447,5 +437,17 @@ export default function ChatPage() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-[#ff751f] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    }>
+      <ChatContent />
+    </Suspense>
   );
 }
