@@ -53,17 +53,19 @@ function ChatContent() {
   const [showSearch, setShowSearch] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
 
-  // Handle ?dm=... from profile page
-  useEffect(() => {
-    const dmId = searchParams.get("dm");
-    const username = searchParams.get("username");
-    if (dmId && username && user) {
-      const otherUserId = dmId.split("_").find(id => id !== user.uid) || "";
-      setActiveDM({ id: dmId, otherUserId, otherUsername: username });
-      setTab("dm");
-      setMobileView("chat");
-    }
-  }, [searchParams, user]);
+  const [dmHandled, setDmHandled] = useState(false);
+
+useEffect(() => {
+  const dmId = searchParams.get("dm");
+  const username = searchParams.get("username");
+  if (dmId && username && user && !dmHandled) {
+    const otherUserId = dmId.split("_").find(id => id !== user.uid) || "";
+    setActiveDM({ id: dmId, otherUserId, otherUsername: username });
+    setTab("dm");
+    setMobileView("chat");
+    setDmHandled(true);
+  }
+}, [searchParams, user, dmHandled]);
 
   useEffect(() => {
     if (tab !== "global") return;
