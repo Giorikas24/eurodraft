@@ -208,11 +208,24 @@ export default function PublicProfilePage() {
           <h1 className="text-5xl md:text-7xl font-black uppercase leading-none tracking-tighter">
             {stats?.username || "ΠΑΙΚΤΗΣ"}
           </h1>
-          {isOwnProfile && (
-            <div className="mt-2">
-              <span className="text-[10px] text-[#ff751f] font-black uppercase tracking-widest">★ Το προφίλ μου</span>
-            </div>
-          )}
+          <div className="mt-2 flex items-center gap-3">
+  {isOwnProfile ? (
+    <span className="text-[10px] text-[#ff751f] font-black uppercase tracking-widest">★ Το προφίλ μου</span>
+  ) : user && (
+    <button
+      onClick={async () => {
+        const { setDoc, doc } = await import("firebase/firestore");
+        const dmId = [user.uid, profileUserId].sort().join("_");
+        await setDoc(doc(db, "dm_conversations", dmId), {
+          members: [user.uid, profileUserId], lastAt: new Date(),
+        }, { merge: true });
+        router.push("/chat");
+      }}
+      className="bg-[#ff751f] text-black font-black px-4 py-2 text-[10px] uppercase tracking-widest hover:bg-white transition-all">
+      💬 Αποστολή μηνύματος
+    </button>
+  )}
+</div>
         </div>
       </div>
 
